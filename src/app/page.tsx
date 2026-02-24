@@ -18,6 +18,7 @@ export default function Home() {
   const [selectedList, setSelectedList] = useState<string>("");
   const [boardData, setBoardData] = useState<BoardData | null>(null);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string>("");
 
   const fetchWorkspaces = useCallback(async () => {
@@ -29,7 +30,6 @@ export default function Home() {
         setSelectedWorkspace(data.workspaces[0].id);
       }
     } catch {
-      // If this fails, env vars are likely not set
       setHasEnvVars(false);
     }
   }, [selectedWorkspace]);
@@ -40,7 +40,12 @@ export default function Home() {
 
   const fetchBoard = useCallback(async () => {
     if (!selectedWorkspace || !selectedList) return;
-    setLoading(true);
+    const isRefresh = !!boardData;
+    if (isRefresh) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
     setError("");
     try {
       const res = await fetch(
@@ -53,12 +58,13 @@ export default function Home() {
       setError(err instanceof Error ? err.message : "Failed to load board");
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  }, [selectedWorkspace, selectedList]);
+  }, [selectedWorkspace, selectedList, boardData]);
 
   useEffect(() => {
     fetchBoard();
-  }, [fetchBoard]);
+  }, [selectedWorkspace, selectedList]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-refresh every 30 seconds
   useEffect(() => {
@@ -97,6 +103,7 @@ export default function Home() {
         onListChange={setSelectedList}
         onConnect={handleConnect}
         onDisconnect={handleDisconnect}
+        refreshing={refreshing}
       />
 
       {error && (
