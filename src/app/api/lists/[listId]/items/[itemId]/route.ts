@@ -17,7 +17,7 @@ export async function PATCH(
     );
   }
 
-  const workspace = getWorkspace(workspaceId);
+  const workspace = await getWorkspace(workspaceId);
   if (!workspace) {
     return NextResponse.json(
       { error: "Workspace not found" },

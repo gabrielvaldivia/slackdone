@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     const userToken = oauthData.authed_user?.access_token;
     const team = await getTeamInfo(botToken);
 
-    addWorkspace({
+    await addWorkspace({
       id: team.id,
       name: team.name,
       botToken,

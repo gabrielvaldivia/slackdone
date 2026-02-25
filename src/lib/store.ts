@@ -1,55 +1,41 @@
-import fs from "fs";
-import path from "path";
-import { Workspace, WorkspaceStore } from "./types";
+import { initializeApp, getApps, cert } from "firebase-admin/app";
+import { getFirestore } from "firebase-admin/firestore";
+import { Workspace } from "./types";
 
-// Use /tmp on Vercel (read-only filesystem), local data/ dir otherwise
-const isVercel = !!process.env.VERCEL;
-const DATA_DIR = isVercel
-  ? path.join("/tmp", "slackdone")
-  : path.join(process.cwd(), "data");
-const STORE_PATH = path.join(DATA_DIR, "workspaces.json");
-
-function ensureDataDir() {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+function getDb() {
+  if (getApps().length === 0) {
+    const serviceAccount = JSON.parse(
+      process.env.FIREBASE_SERVICE_ACCOUNT_KEY || "{}"
+    );
+    initializeApp({
+      credential: cert(serviceAccount),
+    });
   }
+  return getFirestore();
 }
 
-function readStore(): WorkspaceStore {
-  ensureDataDir();
-  if (!fs.existsSync(STORE_PATH)) {
-    return { workspaces: [] };
-  }
-  const raw = fs.readFileSync(STORE_PATH, "utf-8");
-  return JSON.parse(raw);
+const COLLECTION = "workspaces";
+
+export async function getWorkspaces(): Promise<Workspace[]> {
+  const db = getDb();
+  const snapshot = await db.collection(COLLECTION).get();
+  return snapshot.docs.map((doc) => doc.data() as Workspace);
 }
 
-function writeStore(store: WorkspaceStore) {
-  ensureDataDir();
-  fs.writeFileSync(STORE_PATH, JSON.stringify(store, null, 2));
+export async function getWorkspace(
+  id: string
+): Promise<Workspace | undefined> {
+  const db = getDb();
+  const doc = await db.collection(COLLECTION).doc(id).get();
+  return doc.exists ? (doc.data() as Workspace) : undefined;
 }
 
-export function getWorkspaces(): Workspace[] {
-  return readStore().workspaces;
+export async function addWorkspace(workspace: Workspace) {
+  const db = getDb();
+  await db.collection(COLLECTION).doc(workspace.id).set(workspace);
 }
 
-export function getWorkspace(id: string): Workspace | undefined {
-  return readStore().workspaces.find((w) => w.id === id);
-}
-
-export function addWorkspace(workspace: Workspace) {
-  const store = readStore();
-  const existing = store.workspaces.findIndex((w) => w.id === workspace.id);
-  if (existing >= 0) {
-    store.workspaces[existing] = workspace;
-  } else {
-    store.workspaces.push(workspace);
-  }
-  writeStore(store);
-}
-
-export function removeWorkspace(id: string) {
-  const store = readStore();
-  store.workspaces = store.workspaces.filter((w) => w.id !== id);
-  writeStore(store);
+export async function removeWorkspace(id: string) {
+  const db = getDb();
+  await db.collection(COLLECTION).doc(id).delete();
 }

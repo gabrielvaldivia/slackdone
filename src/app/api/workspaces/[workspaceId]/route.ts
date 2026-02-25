@@ -6,6 +6,6 @@ export async function DELETE(
   { params }: { params: Promise<{ workspaceId: string }> }
 ) {
   const { workspaceId } = await params;
-  removeWorkspace(workspaceId);
+  await removeWorkspace(workspaceId);
   return NextResponse.json({ ok: true });
 }

@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const workspace = getWorkspace(workspaceId);
+  const workspace = await getWorkspace(workspaceId);
   if (!workspace) {
     return NextResponse.json(
       { error: "Workspace not found" },
