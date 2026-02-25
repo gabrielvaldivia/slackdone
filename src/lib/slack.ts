@@ -92,6 +92,59 @@ export async function downloadList(token: string, listId: string) {
   return null;
 }
 
+// In-memory user profile cache (per-process, clears on restart)
+const userCache = new Map<string, { id: string; name: string; displayName: string; avatar: string }>();
+
+export async function getUsersInfo(
+  token: string,
+  userIds: string[]
+): Promise<Map<string, { id: string; name: string; displayName: string; avatar: string }>> {
+  const result = new Map<string, { id: string; name: string; displayName: string; avatar: string }>();
+  const toFetch = userIds.filter((id) => {
+    const cached = userCache.get(id);
+    if (cached) {
+      result.set(id, cached);
+      return false;
+    }
+    return true;
+  });
+
+  await Promise.all(
+    toFetch.map(async (userId) => {
+      try {
+        const data = await slackFetch("users.info", token, { user: userId });
+        const user = data.user;
+        const profile = {
+          id: userId,
+          name: user?.real_name || user?.name || userId,
+          displayName: user?.profile?.display_name || user?.real_name || user?.name || userId,
+          avatar: user?.profile?.image_48 || user?.profile?.image_32 || "",
+        };
+        userCache.set(userId, profile);
+        result.set(userId, profile);
+      } catch {
+        // Graceful fallback — scope may be missing
+        const fallback = { id: userId, name: userId, displayName: userId, avatar: "" };
+        result.set(userId, fallback);
+      }
+    })
+  );
+
+  return result;
+}
+
+export async function deleteListItem(
+  token: string,
+  listId: string,
+  itemId: string
+) {
+  const data = await slackFetch("slackLists.items.delete", token, {
+    list_id: listId,
+    id: itemId,
+  });
+  return data;
+}
+
 export async function oauthAccess(code: string) {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
   const res = await fetch(`${SLACK_API}/oauth.v2.access`, {

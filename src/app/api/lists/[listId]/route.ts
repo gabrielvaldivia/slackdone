@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getWorkspace } from "@/lib/store";
-import { getListItems, getListItemInfo } from "@/lib/slack";
-import { BoardColumn, BoardItem } from "@/lib/types";
+import { getListItems, getListItemInfo, getUsersInfo } from "@/lib/slack";
+import { BoardColumn, BoardItem, BoardItemField, SchemaField, UserProfile } from "@/lib/types";
 
 export async function GET(
   request: NextRequest,
@@ -34,6 +34,7 @@ export async function GET(
     let statusColumnId: string | null = null;
     let statusColumnKey: string | null = null;
     const optionsMap = new Map<string, string>(); // value -> label
+    const schemaFields: SchemaField[] = [];
 
     if (items.length > 0) {
       try {
@@ -42,6 +43,21 @@ export async function GET(
         const schema = info.list?.list_metadata?.schema || [];
 
         for (const col of schema) {
+          // Build full schema for all fields
+          const field: SchemaField = {
+            id: col.id,
+            key: col.key,
+            type: col.type,
+            label: col.label || col.key,
+            options: col.options?.choices?.map((c: { value: string; label: string; color?: string }) => ({
+              value: c.value,
+              label: c.label || c.value,
+              color: c.color,
+            })),
+          };
+          schemaFields.push(field);
+
+          // Identify status column
           if (
             (col.type === "select" || col.type === "status") &&
             !statusColumnId
@@ -102,6 +118,41 @@ export async function GET(
       }
     }
 
+    // Build schema lookup
+    const schemaByKey = new Map<string, SchemaField>();
+    const schemaById = new Map<string, SchemaField>();
+    for (const sf of schemaFields) {
+      schemaByKey.set(sf.key, sf);
+      schemaById.set(sf.id, sf);
+    }
+
+    // Collect all user IDs from people fields across all items
+    const allUserIds = new Set<string>();
+    for (const item of items) {
+      const fields = Array.isArray(item.fields) ? item.fields : [];
+      for (const field of fields) {
+        const sf = schemaByKey.get(field.key) || schemaById.get(field.column_id);
+        if (sf?.type === "people" || field.people) {
+          const people = field.people || field.value;
+          if (Array.isArray(people)) {
+            for (const userId of people) {
+              if (typeof userId === "string") allUserIds.add(userId);
+            }
+          }
+        }
+      }
+    }
+
+    // Batch-fetch user profiles
+    let userProfiles = new Map<string, { id: string; name: string; displayName: string; avatar: string }>();
+    if (allUserIds.size > 0) {
+      try {
+        userProfiles = await getUsersInfo(workspace.botToken, Array.from(allUserIds));
+      } catch {
+        // Graceful fallback if users:read scope is missing
+      }
+    }
+
     // Sort items into columns
     for (const item of items) {
       const fields = Array.isArray(item.fields) ? item.fields : [];
@@ -119,7 +170,6 @@ export async function GET(
       let statusValue = "__none__";
       if (statusColumnId) {
         for (const field of fields) {
-          // Match by column_id or key
           const matchesById = field.column_id === statusColumnId;
           const matchesByKey = field.key === statusColumnKey;
           if ((matchesById || matchesByKey) && field.select?.length > 0) {
@@ -129,10 +179,87 @@ export async function GET(
         }
       }
 
+      // Parse ALL fields
+      const parsedFields: BoardItemField[] = [];
+      const itemAssignees: UserProfile[] = [];
+
+      for (const field of fields) {
+        if (field.key === "name") continue; // title is shown separately
+
+        const sf = schemaByKey.get(field.key) || schemaById.get(field.column_id);
+        const fieldType = sf?.type || "unknown";
+        const fieldLabel = sf?.label || field.key || "Unknown";
+        const columnId = field.column_id || sf?.id || field.key;
+
+        let displayValue = "";
+        let rawValue: unknown = null;
+
+        if (fieldType === "people" || field.people) {
+          const people = field.people || field.value;
+          if (Array.isArray(people)) {
+            rawValue = people;
+            const names: string[] = [];
+            for (const userId of people) {
+              if (typeof userId === "string") {
+                const profile = userProfiles.get(userId);
+                if (profile) {
+                  names.push(profile.displayName);
+                  itemAssignees.push(profile);
+                } else {
+                  names.push(userId);
+                  itemAssignees.push({ id: userId, name: userId, displayName: userId, avatar: "" });
+                }
+              }
+            }
+            displayValue = names.join(", ");
+          }
+        } else if (fieldType === "select" || fieldType === "status" || field.select) {
+          const selectIds = field.select || [];
+          rawValue = selectIds;
+          if (sf?.options) {
+            const labels = selectIds.map((id: string) => {
+              const opt = sf.options?.find((o) => o.value === id);
+              return opt?.label || id;
+            });
+            displayValue = labels.join(", ");
+          } else {
+            displayValue = selectIds.join(", ");
+          }
+        } else if (fieldType === "date" || field.date) {
+          rawValue = field.date || field.value;
+          displayValue = typeof rawValue === "string" ? rawValue : "";
+        } else if (field.text) {
+          rawValue = field.text;
+          displayValue = field.text;
+        } else if (field.number !== undefined) {
+          rawValue = field.number;
+          displayValue = String(field.number);
+        } else {
+          rawValue = field.value;
+          displayValue = extractTextFromField(field) || "";
+        }
+
+        parsedFields.push({
+          columnId,
+          key: field.key || sf?.key || "",
+          type: fieldType,
+          label: fieldLabel,
+          value: rawValue,
+          displayValue,
+        });
+      }
+
+      // Deduplicate assignees by ID
+      const uniqueAssignees = Array.from(
+        new Map(itemAssignees.map((a) => [a.id, a])).values()
+      );
+
       const boardItem: BoardItem = {
         id: item.id,
         title,
         statusValue,
+        fields: parsedFields,
+        assignees: uniqueAssignees,
         rawItem: {
           id: item.id,
           title,
@@ -164,6 +291,7 @@ export async function GET(
           }
         : null,
       columns: boardColumns,
+      schema: schemaFields,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
