@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BoardData, BoardColumn as BoardColumnType } from "@/lib/types";
 import Column from "./Column";
 
@@ -13,16 +13,14 @@ interface BoardProps {
 export default function Board({ data, workspaceId, onRefresh }: BoardProps) {
   const [columns, setColumns] = useState<BoardColumnType[]>(data.columns);
   const [error, setError] = useState("");
+  const pendingDrop = useRef(false);
 
-  // Sync when data prop changes
-  if (data.columns !== columns && data.listId) {
-    // Only update if the data actually changed (new fetch)
-    const dataKey = JSON.stringify(data.columns.map((c) => c.items.map((i) => i.id)));
-    const colKey = JSON.stringify(columns.map((c) => c.items.map((i) => i.id)));
-    if (dataKey !== colKey) {
+  // Sync from props when new data arrives (but not during a pending drag)
+  useEffect(() => {
+    if (!pendingDrop.current) {
       setColumns(data.columns);
     }
-  }
+  }, [data]);
 
   const handleDrop = async (
     itemId: string,
@@ -30,6 +28,7 @@ export default function Board({ data, workspaceId, onRefresh }: BoardProps) {
     targetColumnId: string
   ) => {
     // Optimistic update
+    pendingDrop.current = true;
     const prevColumns = columns;
     setColumns((prev) => {
       const next = prev.map((col) => ({ ...col, items: [...col.items] }));
@@ -67,8 +66,12 @@ export default function Board({ data, workspaceId, onRefresh }: BoardProps) {
 
       if (!res.ok) throw new Error("Update failed");
       setError("");
+      // Refresh to get server-confirmed state
+      pendingDrop.current = false;
+      onRefresh();
     } catch {
       // Rollback
+      pendingDrop.current = false;
       setColumns(prevColumns);
       setError("Failed to move item. Reverted.");
       setTimeout(() => setError(""), 3000);
@@ -92,7 +95,6 @@ export default function Board({ data, workspaceId, onRefresh }: BoardProps) {
       });
 
       if (!res.ok) throw new Error("Create failed");
-      // Refresh board to get the new item with proper ID
       onRefresh();
     } catch {
       setError("Failed to create item.");
