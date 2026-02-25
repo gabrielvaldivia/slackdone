@@ -24,9 +24,10 @@ export async function GET(request: NextRequest) {
     const lists = await searchLists(token);
     return NextResponse.json({ lists });
   } catch (err) {
-    console.error("Search lists error:", err);
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("Search lists error:", msg);
     return NextResponse.json(
-      { error: "Failed to search lists" },
+      { error: msg, hasUserToken: !!workspace.userToken },
       { status: 500 }
     );
   }
