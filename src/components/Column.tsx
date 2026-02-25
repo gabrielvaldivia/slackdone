@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { BoardColumn as BoardColumnType } from "@/lib/types";
+import { BoardColumn as BoardColumnType, BoardItem } from "@/lib/types";
 import Card from "./Card";
 import AddCardForm from "./AddCardForm";
 
@@ -23,9 +23,10 @@ interface ColumnProps {
   onAddItem: (columnId: string, title: string) => void;
   onDeleteItem: (itemId: string, columnId: string) => void;
   onRenameItem: (itemId: string, newTitle: string) => void;
+  onCardClick?: (item: BoardItem) => void;
 }
 
-export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDeleteItem, onRenameItem }: ColumnProps) {
+export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDeleteItem, onRenameItem, onCardClick }: ColumnProps) {
   const [dragOver, setDragOver] = useState(false);
   const [dropIndex, setDropIndex] = useState<number | null>(null);
   const dragCounter = useRef(0);
@@ -101,6 +102,7 @@ export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDe
               columnId={column.id}
               onDelete={() => onDeleteItem(item.id, column.id)}
               onRename={(newTitle) => onRenameItem(item.id, newTitle)}
+              onClick={() => onCardClick?.(item)}
             />
           </div>
         ))}

@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BoardData, BoardColumn as BoardColumnType } from "@/lib/types";
+import { BoardData, BoardColumn as BoardColumnType, BoardItem } from "@/lib/types";
 import Column from "./Column";
+import CardDetailModal from "./CardDetailModal";
 
 interface BoardProps {
   data: BoardData;
@@ -13,11 +14,25 @@ interface BoardProps {
 export default function Board({ data, workspaceId, onRefresh }: BoardProps) {
   const [columns, setColumns] = useState<BoardColumnType[]>(data.columns);
   const [error, setError] = useState("");
+  const [selectedItem, setSelectedItem] = useState<BoardItem | null>(null);
 
   // Keep local columns in sync with server data
   useEffect(() => {
     setColumns(data.columns);
   }, [data]);
+
+  // Keep selectedItem in sync when columns update
+  useEffect(() => {
+    if (!selectedItem) return;
+    const itemId = selectedItem.id;
+    for (const col of columns) {
+      const found = col.items.find((i) => i.id === itemId);
+      if (found && found !== selectedItem) {
+        setSelectedItem(found);
+        return;
+      }
+    }
+  }, [columns]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleDrop = async (
     itemId: string,
@@ -96,7 +111,6 @@ export default function Board({ data, workspaceId, onRefresh }: BoardProps) {
   };
 
   const handleDeleteItem = async (itemId: string, columnId: string) => {
-    // Optimistic removal
     const prevColumns = columns.map((col) => ({
       ...col,
       items: [...col.items],
@@ -110,6 +124,10 @@ export default function Board({ data, workspaceId, onRefresh }: BoardProps) {
       }
       return next;
     });
+
+    if (selectedItem?.id === itemId) {
+      setSelectedItem(null);
+    }
 
     try {
       const res = await fetch(
@@ -125,7 +143,6 @@ export default function Board({ data, workspaceId, onRefresh }: BoardProps) {
   };
 
   const handleRenameItem = async (itemId: string, newTitle: string) => {
-    // Optimistic rename
     setColumns((prev) =>
       prev.map((col) => ({
         ...col,
@@ -161,6 +178,52 @@ export default function Board({ data, workspaceId, onRefresh }: BoardProps) {
     } catch {
       onRefresh();
       setError("Failed to rename item.");
+      setTimeout(() => setError(""), 3000);
+    }
+  };
+
+  const handleUpdateField = async (itemId: string, columnId: string, value: unknown) => {
+    // Optimistic field update
+    setColumns((prev) =>
+      prev.map((col) => ({
+        ...col,
+        items: col.items.map((item) => {
+          if (item.id !== itemId) return item;
+          return {
+            ...item,
+            fields: item.fields?.map((f) =>
+              f.columnId === columnId ? { ...f, value, displayValue: String(value ?? "") } : f
+            ),
+          };
+        }),
+      }))
+    );
+
+    try {
+      // Build the cell update based on field type
+      const cell: Record<string, unknown> = { column_id: columnId };
+
+      if (Array.isArray(value)) {
+        cell.select = value;
+      } else if (typeof value === "string") {
+        cell.value = value;
+      } else if (typeof value === "number") {
+        cell.number = value;
+      }
+
+      const res = await fetch(
+        `/api/lists/${data.listId}/items/${itemId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ workspaceId, cells: [cell] }),
+        }
+      );
+
+      if (!res.ok) throw new Error("Update field failed");
+    } catch {
+      onRefresh();
+      setError("Failed to update field.");
       setTimeout(() => setError(""), 3000);
     }
   };
@@ -207,9 +270,22 @@ export default function Board({ data, workspaceId, onRefresh }: BoardProps) {
             onAddItem={handleAddItem}
             onDeleteItem={handleDeleteItem}
             onRenameItem={handleRenameItem}
+            onCardClick={setSelectedItem}
           />
         ))}
       </div>
+
+      {selectedItem && (
+        <CardDetailModal
+          item={selectedItem}
+          schema={data.schema || []}
+          onClose={() => setSelectedItem(null)}
+          onRename={(newTitle) => handleRenameItem(selectedItem.id, newTitle)}
+          onUpdateField={(columnId, value) =>
+            handleUpdateField(selectedItem.id, columnId, value)
+          }
+        />
+      )}
     </div>
   );
 }
