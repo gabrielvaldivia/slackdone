@@ -8,7 +8,7 @@ export async function PATCH(
 ) {
   const { listId, itemId } = await params;
   const body = await request.json();
-  const { workspaceId, fields } = body;
+  const { workspaceId, cells } = body;
 
   if (!workspaceId) {
     return NextResponse.json(
@@ -30,7 +30,7 @@ export async function PATCH(
       workspace.userToken || workspace.botToken,
       listId,
       itemId,
-      fields
+      cells
     );
     return NextResponse.json(data);
   } catch (err) {

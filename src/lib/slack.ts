@@ -85,12 +85,11 @@ export async function updateListItem(
   token: string,
   listId: string,
   itemId: string,
-  fields: Record<string, unknown>
+  cells: Array<Record<string, unknown>>
 ) {
   const data = await slackFetch("slackLists.items.update", token, {
     list_id: listId,
-    item_id: itemId,
-    item: { fields },
+    cells: cells.map((cell) => ({ ...cell, row_id: itemId })),
   });
   return data;
 }

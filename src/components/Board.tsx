@@ -49,19 +49,19 @@ export default function Board({ data, workspaceId, onRefresh }: BoardProps) {
     // API call
     try {
       if (!data.statusColumn) return;
-      const fields: Record<string, unknown> = {};
-      if (targetColumnId === "__none__") {
-        fields[data.statusColumn.id] = null;
-      } else {
-        fields[data.statusColumn.id] = { id: targetColumnId };
-      }
+      const cells = [
+        {
+          column_id: data.statusColumn.id,
+          select: targetColumnId === "__none__" ? [] : [targetColumnId],
+        },
+      ];
 
       const res = await fetch(
         `/api/lists/${data.listId}/items/${itemId}`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ workspaceId, fields }),
+          body: JSON.stringify({ workspaceId, cells }),
         }
       );
 
