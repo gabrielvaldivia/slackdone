@@ -108,10 +108,11 @@ export default function Board({ data, workspaceId, onRefresh }: BoardProps) {
       )}
 
       <div className="flex flex-1 gap-4 overflow-x-auto p-4">
-        {columns.map((column) => (
+        {columns.map((column, index) => (
           <Column
             key={column.id}
             column={column}
+            colorIndex={index}
             onDrop={handleDrop}
             onAddItem={handleAddItem}
           />

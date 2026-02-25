@@ -1,10 +1,28 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
+  --background: #f8f9fa;
   --foreground: #000000;
   --border: #e5e7eb;
   --muted: #6b7280;
+
+  /* Column colors */
+  --col-0: #6366f1; /* indigo */
+  --col-0-bg: #eef2ff;
+  --col-1: #8b5cf6; /* violet */
+  --col-1-bg: #f5f3ff;
+  --col-2: #ec4899; /* pink */
+  --col-2-bg: #fdf2f8;
+  --col-3: #f59e0b; /* amber */
+  --col-3-bg: #fffbeb;
+  --col-4: #10b981; /* emerald */
+  --col-4-bg: #ecfdf5;
+  --col-5: #3b82f6; /* blue */
+  --col-5-bg: #eff6ff;
+  --col-6: #ef4444; /* red */
+  --col-6-bg: #fef2f2;
+  --col-7: #14b8a6; /* teal */
+  --col-7-bg: #f0fdfa;
 }
 
 @theme inline {

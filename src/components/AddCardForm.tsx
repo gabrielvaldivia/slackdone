@@ -44,13 +44,13 @@ export default function AddCardForm({ onAdd }: AddCardFormProps) {
         onChange={(e) => setTitle(e.target.value)}
         placeholder="Item title"
         autoFocus
-        className="w-full border border-border bg-transparent px-2 py-1 text-sm outline-none"
+        className="w-full rounded-lg border border-border bg-white px-2.5 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-300"
       />
       <div className="flex gap-2">
         <button
           type="submit"
           disabled={submitting}
-          className="border border-foreground bg-foreground px-2 py-1 text-xs text-background hover:bg-transparent hover:text-foreground transition-colors disabled:opacity-50"
+          className="rounded-md bg-foreground px-3 py-1 text-xs text-background hover:bg-foreground/80 transition-colors disabled:opacity-50"
         >
           {submitting ? "Adding..." : "Add"}
         </button>
@@ -60,7 +60,7 @@ export default function AddCardForm({ onAdd }: AddCardFormProps) {
             setIsOpen(false);
             setTitle("");
           }}
-          className="px-2 py-1 text-xs text-muted hover:text-foreground transition-colors"
+          className="rounded-md px-2 py-1 text-xs text-muted hover:text-foreground transition-colors"
         >
           Cancel
         </button>

@@ -20,7 +20,7 @@ export default function Card({ item, columnId }: CardProps) {
       onDragEnd={(e) => {
         (e.target as HTMLElement).style.opacity = "1";
       }}
-      className="cursor-grab border border-border bg-white p-3 text-sm hover:border-foreground/30 transition-colors active:cursor-grabbing"
+      className="cursor-grab rounded-lg bg-white p-3 text-sm shadow-sm hover:shadow-md transition-shadow active:cursor-grabbing"
     >
       {item.title}
     </div>
