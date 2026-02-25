@@ -14,8 +14,14 @@ interface WorkspaceInfo {
 export default function Home() {
   const [hasEnvVars, setHasEnvVars] = useState(true);
   const [workspaces, setWorkspaces] = useState<WorkspaceInfo[]>([]);
-  const [selectedWorkspace, setSelectedWorkspace] = useState<string>("");
-  const [selectedList, setSelectedList] = useState<string>("");
+  const [selectedWorkspace, setSelectedWorkspace] = useState<string>(() => {
+    if (typeof window !== "undefined") return localStorage.getItem("slackdone:workspace") || "";
+    return "";
+  });
+  const [selectedList, setSelectedList] = useState<string>(() => {
+    if (typeof window !== "undefined") return localStorage.getItem("slackdone:list") || "";
+    return "";
+  });
   const [boardData, setBoardData] = useState<BoardData | null>(null);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -28,7 +34,11 @@ export default function Home() {
       setHasEnvVars(data.configured !== false);
       setWorkspaces(data.workspaces || []);
       if (data.workspaces?.length > 0 && !selectedWorkspace) {
-        setSelectedWorkspace(data.workspaces[0].id);
+        const saved = localStorage.getItem("slackdone:workspace");
+        const pick = saved && data.workspaces.some((w: WorkspaceInfo) => w.id === saved)
+          ? saved
+          : data.workspaces[0].id;
+        setSelectedWorkspace(pick);
       }
     } catch {
       setHasEnvVars(false);
@@ -107,8 +117,13 @@ export default function Home() {
           setSelectedWorkspace(id);
           setSelectedList("");
           setBoardData(null);
+          localStorage.setItem("slackdone:workspace", id);
+          localStorage.removeItem("slackdone:list");
         }}
-        onListChange={setSelectedList}
+        onListChange={(id) => {
+          setSelectedList(id);
+          localStorage.setItem("slackdone:list", id);
+        }}
         onConnect={handleConnect}
         onDisconnect={handleDisconnect}
         refreshing={refreshing}
