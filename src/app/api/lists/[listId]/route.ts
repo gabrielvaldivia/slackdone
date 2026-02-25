@@ -29,44 +29,28 @@ export async function GET(
     const data = await getListItems(token, listId);
     const items = data.items || [];
 
-    // The API returns fields as an array of objects:
-    // { key, value, text?, select?, rich_text?, column_id }
-    // "key" = "name" is the title field
-    // Fields with "select" arrays are status/select columns
-
-    // First pass: discover the status column and its options
+    // Get schema from items.info (returns list.list_metadata.schema)
+    let listTitle = listId;
     let statusColumnId: string | null = null;
-    const optionsMap = new Map<string, string>(); // optionId -> optionName
+    let statusColumnKey: string | null = null;
+    const optionsMap = new Map<string, string>(); // value -> label
 
-    // Look at schema columns if available
-    const schemaColumns = data.schema?.columns || data.columns || [];
-    for (const col of schemaColumns) {
-      if (col.type === "select" || col.type === "status") {
-        if (!statusColumnId) {
-          statusColumnId = col.id;
-          if (col.options) {
-            for (const opt of col.options) {
-              optionsMap.set(opt.id, opt.name || opt.label || opt.id);
-            }
-          }
-        }
-      }
-    }
-
-    // If no schema from list response, fetch item info to get column definitions
-    if (!statusColumnId && items.length > 0) {
+    if (items.length > 0) {
       try {
-        const itemInfo = await getListItemInfo(token, listId, items[0].id);
-        const infoCols = itemInfo.schema?.columns || itemInfo.columns || [];
-        for (const col of infoCols) {
-          if (col.type === "select" || col.type === "status") {
-            if (!statusColumnId) {
-              statusColumnId = col.id;
-              if (col.options) {
-                for (const opt of col.options) {
-                  optionsMap.set(opt.id, opt.name || opt.label || opt.id);
-                }
-              }
+        const info = await getListItemInfo(token, listId, items[0].id);
+        listTitle = info.list?.title || listId;
+        const schema = info.list?.list_metadata?.schema || [];
+
+        for (const col of schema) {
+          if (
+            (col.type === "select" || col.type === "status") &&
+            !statusColumnId
+          ) {
+            statusColumnId = col.id;
+            statusColumnKey = col.key;
+            const choices = col.options?.choices || [];
+            for (const choice of choices) {
+              optionsMap.set(choice.value, choice.label || choice.value);
             }
           }
         }
@@ -75,20 +59,31 @@ export async function GET(
       }
     }
 
-    // Last resort: infer from item data
+    // Build board columns from schema options
+    const boardColumns: BoardColumn[] = [
+      { id: "__none__", name: "No Status", items: [] },
+    ];
+    for (const [optId, optLabel] of optionsMap) {
+      boardColumns.push({ id: optId, name: optLabel, items: [] });
+    }
+
+    // If no schema found, infer from item data
     if (!statusColumnId) {
       for (const item of items) {
         const fields = Array.isArray(item.fields) ? item.fields : [];
         for (const field of fields) {
-          if (field.select && Array.isArray(field.select) && field.key !== "name") {
+          if (
+            field.select &&
+            Array.isArray(field.select) &&
+            field.key !== "name"
+          ) {
             statusColumnId = field.column_id || field.key;
+            statusColumnKey = field.key;
             break;
           }
         }
         if (statusColumnId) break;
       }
-
-      // Collect all unique option IDs for this column
       if (statusColumnId) {
         for (const item of items) {
           const fields = Array.isArray(item.fields) ? item.fields : [];
@@ -98,20 +93,13 @@ export async function GET(
               for (const optId of field.select) {
                 if (!optionsMap.has(optId)) {
                   optionsMap.set(optId, optId);
+                  boardColumns.push({ id: optId, name: optId, items: [] });
                 }
               }
             }
           }
         }
       }
-    }
-
-    // Build board columns
-    const boardColumns: BoardColumn[] = [
-      { id: "__none__", name: "No Status", items: [] },
-    ];
-    for (const [optId, optName] of optionsMap) {
-      boardColumns.push({ id: optId, name: optName, items: [] });
     }
 
     // Sort items into columns
@@ -127,12 +115,14 @@ export async function GET(
         }
       }
 
-      // Extract status
+      // Extract status value
       let statusValue = "__none__";
       if (statusColumnId) {
         for (const field of fields) {
-          const colId = field.column_id || field.key;
-          if (colId === statusColumnId && field.select?.length > 0) {
+          // Match by column_id or key
+          const matchesById = field.column_id === statusColumnId;
+          const matchesByKey = field.key === statusColumnKey;
+          if ((matchesById || matchesByKey) && field.select?.length > 0) {
             statusValue = field.select[0];
             break;
           }
@@ -160,36 +150,46 @@ export async function GET(
 
     return NextResponse.json({
       listId,
-      listTitle: data.list?.title || listId,
+      listTitle,
       statusColumn: statusColumnId
-        ? { id: statusColumnId, name: "Status", type: "select", options: Array.from(optionsMap.entries()).map(([id, name]) => ({ id, name })) }
+        ? {
+            id: statusColumnId,
+            key: statusColumnKey,
+            name: "Status",
+            type: "select",
+            options: Array.from(optionsMap.entries()).map(([id, name]) => ({
+              id,
+              name,
+            })),
+          }
         : null,
       columns: boardColumns,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("Get list items error:", msg);
-    return NextResponse.json(
-      { error: msg },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
 
 function extractTextFromField(field: Record<string, unknown>): string {
   if (typeof field.text === "string") return field.text;
   if (typeof field.value === "string") {
-    // Try parsing rich_text JSON
     try {
       const parsed = JSON.parse(field.value);
       if (Array.isArray(parsed)) {
         return parsed
           .flatMap((block: Record<string, unknown>) =>
             Array.isArray(block.elements)
-              ? (block.elements as Record<string, unknown>[]).flatMap((section: Record<string, unknown>) =>
-                  Array.isArray(section.elements)
-                    ? (section.elements as Record<string, unknown>[]).map((el: Record<string, unknown>) => (el.text as string) || "")
-                    : []
+              ? (block.elements as Record<string, unknown>[]).flatMap(
+                  (section: Record<string, unknown>) =>
+                    Array.isArray(section.elements)
+                      ? (
+                          section.elements as Record<string, unknown>[]
+                        ).map((el: Record<string, unknown>) =>
+                          (el.text as string) || ""
+                        )
+                      : []
                 )
               : []
           )
