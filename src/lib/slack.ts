@@ -90,6 +90,7 @@ export async function updateListItem(
 }
 
 export async function oauthAccess(code: string) {
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
   const res = await fetch(`${SLACK_API}/oauth.v2.access`, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -97,6 +98,7 @@ export async function oauthAccess(code: string) {
       client_id: process.env.SLACK_CLIENT_ID!,
       client_secret: process.env.SLACK_CLIENT_SECRET!,
       code,
+      redirect_uri: `${baseUrl}/api/auth/callback`,
     }),
   });
   const data = await res.json();
