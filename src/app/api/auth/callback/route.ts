@@ -18,12 +18,14 @@ export async function GET(request: NextRequest) {
   try {
     const oauthData = await oauthAccess(code);
     const botToken = oauthData.access_token;
+    const userToken = oauthData.authed_user?.access_token;
     const team = await getTeamInfo(botToken);
 
     addWorkspace({
       id: team.id,
       name: team.name,
       botToken,
+      userToken,
     });
 
     return NextResponse.redirect(`${baseUrl}?workspace=${team.id}`);

@@ -20,7 +20,8 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const lists = await searchLists(workspace.botToken);
+    const token = workspace.userToken || workspace.botToken;
+    const lists = await searchLists(token);
     return NextResponse.json({ lists });
   } catch (err) {
     console.error("Search lists error:", err);

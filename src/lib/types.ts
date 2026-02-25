@@ -3,6 +3,7 @@ export interface Workspace {
   id: string;
   name: string;
   botToken: string;
+  userToken?: string;
 }
 
 export interface WorkspaceStore {

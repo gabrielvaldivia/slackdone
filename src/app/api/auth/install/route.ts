@@ -10,12 +10,14 @@ export async function GET() {
   }
 
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
-  const scopes = "lists:read,lists:write,search:read,team:read";
+  const botScopes = "lists:read,lists:write,team:read";
+  const userScopes = "search:read";
   const redirectUri = `${baseUrl}/api/auth/callback`;
 
   const url = new URL("https://slack.com/oauth/v2/authorize");
   url.searchParams.set("client_id", clientId);
-  url.searchParams.set("scope", scopes);
+  url.searchParams.set("scope", botScopes);
+  url.searchParams.set("user_scope", userScopes);
   url.searchParams.set("redirect_uri", redirectUri);
 
   return NextResponse.redirect(url.toString());

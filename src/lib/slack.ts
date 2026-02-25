@@ -30,7 +30,6 @@ export async function searchLists(token: string) {
     query: "type:list",
     count: 50,
   });
-  // search.messages returns matches — extract unique lists
   const messages = data.messages?.matches || [];
   const listsMap = new Map<string, { id: string; title: string }>();
   for (const msg of messages) {
@@ -45,7 +44,7 @@ export async function searchLists(token: string) {
 }
 
 export async function getListItems(token: string, listId: string) {
-  const data = await slackFetch("lists.items.list", token, {
+  const data = await slackFetch("slackLists.items.list", token, {
     list_id: listId,
     limit: 200,
   });
@@ -57,7 +56,7 @@ export async function getListItemInfo(
   listId: string,
   itemId: string
 ) {
-  const data = await slackFetch("lists.items.info", token, {
+  const data = await slackFetch("slackLists.items.info", token, {
     list_id: listId,
     item_id: itemId,
   });
@@ -69,7 +68,7 @@ export async function createListItem(
   listId: string,
   fields: Record<string, unknown>
 ) {
-  const data = await slackFetch("lists.items.create", token, {
+  const data = await slackFetch("slackLists.items.create", token, {
     list_id: listId,
     item: { fields },
   });
@@ -82,7 +81,7 @@ export async function updateListItem(
   itemId: string,
   fields: Record<string, unknown>
 ) {
-  const data = await slackFetch("lists.items.update", token, {
+  const data = await slackFetch("slackLists.items.update", token, {
     list_id: listId,
     item_id: itemId,
     item: { fields },
