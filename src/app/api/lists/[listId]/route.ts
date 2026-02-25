@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getWorkspace } from "@/lib/store";
-import { getListItems } from "@/lib/slack";
+import { getListItems, getListItemInfo } from "@/lib/slack";
 import { BoardColumn, BoardItem } from "@/lib/types";
 
 export async function GET(
@@ -53,7 +53,29 @@ export async function GET(
       }
     }
 
-    // If no schema, infer from item data — find first field with "select"
+    // If no schema from list response, fetch item info to get column definitions
+    if (!statusColumnId && items.length > 0) {
+      try {
+        const itemInfo = await getListItemInfo(token, listId, items[0].id);
+        const infoCols = itemInfo.schema?.columns || itemInfo.columns || [];
+        for (const col of infoCols) {
+          if (col.type === "select" || col.type === "status") {
+            if (!statusColumnId) {
+              statusColumnId = col.id;
+              if (col.options) {
+                for (const opt of col.options) {
+                  optionsMap.set(opt.id, opt.name || opt.label || opt.id);
+                }
+              }
+            }
+          }
+        }
+      } catch {
+        // Fall through to inference
+      }
+    }
+
+    // Last resort: infer from item data
     if (!statusColumnId) {
       for (const item of items) {
         const fields = Array.isArray(item.fields) ? item.fields : [];
