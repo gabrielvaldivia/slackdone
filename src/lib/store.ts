@@ -2,7 +2,11 @@ import fs from "fs";
 import path from "path";
 import { Workspace, WorkspaceStore } from "./types";
 
-const DATA_DIR = path.join(process.cwd(), "data");
+// Use /tmp on Vercel (read-only filesystem), local data/ dir otherwise
+const isVercel = !!process.env.VERCEL;
+const DATA_DIR = isVercel
+  ? path.join("/tmp", "slackdone")
+  : path.join(process.cwd(), "data");
 const STORE_PATH = path.join(DATA_DIR, "workspaces.json");
 
 function ensureDataDir() {

@@ -25,6 +25,7 @@ export default function Home() {
     try {
       const res = await fetch("/api/workspaces");
       const data = await res.json();
+      setHasEnvVars(data.configured !== false);
       setWorkspaces(data.workspaces || []);
       if (data.workspaces?.length > 0 && !selectedWorkspace) {
         setSelectedWorkspace(data.workspaces[0].id);
