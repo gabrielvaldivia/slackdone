@@ -5,7 +5,7 @@ export async function GET() {
   const configured = !!(
     process.env.SLACK_CLIENT_ID &&
     process.env.SLACK_CLIENT_SECRET &&
-    process.env.FIREBASE_SERVICE_ACCOUNT_KEY
+    process.env.FIREBASE_PROJECT_ID
   );
 
   if (!configured) {
