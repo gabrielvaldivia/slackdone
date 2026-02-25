@@ -11,7 +11,7 @@ export async function GET() {
 
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
   const botScopes = "lists:read,lists:write,team:read";
-  const userScopes = "search:read";
+  const userScopes = "search:read,lists:read,lists:write";
   const redirectUri = `${baseUrl}/api/auth/callback`;
 
   const url = new URL("https://slack.com/oauth/v2/authorize");
