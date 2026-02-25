@@ -25,7 +25,8 @@ export async function GET(
   }
 
   try {
-    const data = await getListItems(workspace.botToken, listId);
+    const token = workspace.userToken || workspace.botToken;
+    const data = await getListItems(token, listId);
     const items = data.items || [];
     const schema = data.schema || {};
 

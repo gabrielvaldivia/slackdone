@@ -26,7 +26,7 @@ export async function POST(
   }
 
   try {
-    const data = await createListItem(workspace.botToken, listId, fields);
+    const data = await createListItem(workspace.userToken || workspace.botToken, listId, fields);
     return NextResponse.json(data);
   } catch (err) {
     console.error("Create item error:", err);

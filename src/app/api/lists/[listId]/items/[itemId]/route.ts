@@ -27,7 +27,7 @@ export async function PATCH(
 
   try {
     const data = await updateListItem(
-      workspace.botToken,
+      workspace.userToken || workspace.botToken,
       listId,
       itemId,
       fields
