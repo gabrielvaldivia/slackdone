@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import Header from "@/components/Header";
 import EmptyState from "@/components/EmptyState";
 import Board from "@/components/Board";
@@ -56,9 +56,12 @@ export default function Home() {
     }
   }, [fetchWorkspaces]);
 
+  const boardDataRef = useRef(boardData);
+  boardDataRef.current = boardData;
+
   const fetchBoard = useCallback(async () => {
     if (!selectedWorkspace || !selectedList) return;
-    const isRefresh = !!boardData;
+    const isRefresh = !!boardDataRef.current;
     if (isRefresh) {
       setRefreshing(true);
     } else {
@@ -78,7 +81,7 @@ export default function Home() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [selectedWorkspace, selectedList, boardData]);
+  }, [selectedWorkspace, selectedList]);
 
   useEffect(() => {
     fetchBoard();

@@ -25,30 +25,6 @@ export async function getTeamInfo(token: string) {
   return { id: data.team.id, name: data.team.name };
 }
 
-export async function searchLists(token: string) {
-  const url = new URL(`${SLACK_API}/search.messages`);
-  url.searchParams.set("query", "type:list");
-  url.searchParams.set("count", "50");
-  const res = await fetch(url.toString(), {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  const data = await res.json();
-  if (!data.ok) {
-    throw new Error(`Slack API search.messages: ${data.error}`);
-  }
-  const messages = data.messages?.matches || [];
-  const listsMap = new Map<string, { id: string; title: string }>();
-  for (const msg of messages) {
-    if (msg.list_id) {
-      listsMap.set(msg.list_id, {
-        id: msg.list_id,
-        title: msg.text || msg.list_id,
-      });
-    }
-  }
-  return Array.from(listsMap.values());
-}
-
 export async function getListItems(token: string, listId: string) {
   const data = await slackFetch("slackLists.items.list", token, {
     list_id: listId,

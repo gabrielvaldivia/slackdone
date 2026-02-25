@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { BoardData, BoardColumn as BoardColumnType } from "@/lib/types";
 import Column from "./Column";
 
@@ -13,13 +13,10 @@ interface BoardProps {
 export default function Board({ data, workspaceId, onRefresh }: BoardProps) {
   const [columns, setColumns] = useState<BoardColumnType[]>(data.columns);
   const [error, setError] = useState("");
-  const pendingDrop = useRef(false);
 
-  // Sync from props when new data arrives (but not during a pending drag)
+  // Keep local columns in sync with server data
   useEffect(() => {
-    if (!pendingDrop.current) {
-      setColumns(data.columns);
-    }
+    setColumns(data.columns);
   }, [data]);
 
   const handleDrop = async (
@@ -27,9 +24,13 @@ export default function Board({ data, workspaceId, onRefresh }: BoardProps) {
     sourceColumnId: string,
     targetColumnId: string
   ) => {
-    // Optimistic update
-    pendingDrop.current = true;
-    const prevColumns = columns;
+    // Snapshot for rollback
+    const prevColumns = columns.map((col) => ({
+      ...col,
+      items: [...col.items],
+    }));
+
+    // Optimistic update — move card immediately in UI
     setColumns((prev) => {
       const next = prev.map((col) => ({ ...col, items: [...col.items] }));
       const srcCol = next.find((c) => c.id === sourceColumnId);
@@ -45,7 +46,7 @@ export default function Board({ data, workspaceId, onRefresh }: BoardProps) {
       return next;
     });
 
-    // API call
+    // Fire-and-forget API call — no refresh needed, auto-refresh will sync
     try {
       if (!data.statusColumn) return;
       const cells = [
@@ -66,12 +67,8 @@ export default function Board({ data, workspaceId, onRefresh }: BoardProps) {
 
       if (!res.ok) throw new Error("Update failed");
       setError("");
-      // Refresh to get server-confirmed state
-      pendingDrop.current = false;
-      onRefresh();
     } catch {
-      // Rollback
-      pendingDrop.current = false;
+      // Rollback on failure
       setColumns(prevColumns);
       setError("Failed to move item. Reverted.");
       setTimeout(() => setError(""), 3000);
