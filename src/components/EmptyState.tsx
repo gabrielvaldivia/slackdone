@@ -17,34 +17,15 @@ export default function EmptyState({
         <div className="max-w-md space-y-4 text-center">
           <h2 className="text-lg font-medium">Setup Required</h2>
           <div className="space-y-2 text-sm text-muted text-left">
-            <p>Create a Slack app and add these environment variables:</p>
-            <ol className="list-decimal list-inside space-y-1">
-              <li>
-                Go to{" "}
-                <span className="font-mono text-xs">api.slack.com/apps</span>{" "}
-                and create a new app
-              </li>
-              <li>
-                Add OAuth scopes:{" "}
-                <span className="font-mono text-xs">
-                  lists:read, lists:write, search:read, team:read
-                </span>
-              </li>
-              <li>
-                Set redirect URL to{" "}
-                <span className="font-mono text-xs">
-                  http://localhost:3000/api/auth/callback
-                </span>
-              </li>
-              <li>
-                Copy Client ID and Secret to{" "}
-                <span className="font-mono text-xs">.env.local</span>
-              </li>
-            </ol>
+            <p>
+              Add these environment variables (Vercel dashboard or{" "}
+              <span className="font-mono text-xs">.env.local</span>):
+            </p>
             <pre className="mt-3 rounded border border-border bg-gray-50 p-3 text-xs text-left">
-              {`SLACK_CLIENT_ID=your_client_id
-SLACK_CLIENT_SECRET=your_secret
-NEXT_PUBLIC_BASE_URL=http://localhost:3000`}
+              {`SLACK_CLIENT_ID=...
+SLACK_CLIENT_SECRET=...
+FIREBASE_SERVICE_ACCOUNT_KEY={"type":"service_account",...}
+NEXT_PUBLIC_BASE_URL=https://your-app.vercel.app`}
             </pre>
           </div>
         </div>
