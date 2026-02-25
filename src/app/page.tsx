@@ -130,6 +130,7 @@ export default function Home() {
         onConnect={handleConnect}
         onDisconnect={handleDisconnect}
         refreshing={refreshing}
+        boardTitle={boardData?.listTitle}
       />
 
       {error && (

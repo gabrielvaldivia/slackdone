@@ -41,6 +41,14 @@ export interface SlackListItemValue {
   textValue?: string;
 }
 
+// Saved list reference
+export interface SavedList {
+  listId: string;
+  title: string;
+  workspaceId: string;
+  addedAt: number;
+}
+
 // Board view types
 export interface BoardData {
   listId: string;

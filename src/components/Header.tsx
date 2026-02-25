@@ -12,6 +12,7 @@ interface HeaderProps {
   onConnect: () => void;
   onDisconnect: (id: string) => void;
   refreshing?: boolean;
+  boardTitle?: string;
 }
 
 export default function Header({
@@ -23,9 +24,10 @@ export default function Header({
   onConnect,
   onDisconnect,
   refreshing,
+  boardTitle,
 }: HeaderProps) {
   return (
-    <header className="flex items-center justify-between border-b border-border px-4 py-3">
+    <header className="flex items-center justify-between border-b border-border bg-white px-4 py-3">
       <div className="flex items-center gap-6">
         <h1 className="text-sm font-semibold tracking-tight">
           Slackdone
@@ -47,12 +49,13 @@ export default function Header({
           workspaceId={selectedWorkspace}
           selected={selectedList}
           onChange={onListChange}
+          boardTitle={boardTitle}
         />
       </div>
 
       <button
         onClick={onConnect}
-        className="border border-border px-3 py-1 text-xs hover:bg-foreground hover:text-background transition-colors"
+        className="rounded-md border border-border px-3 py-1 text-xs hover:bg-foreground hover:text-background transition-colors"
       >
         + Connect
       </button>
