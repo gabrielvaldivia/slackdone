@@ -19,14 +19,29 @@ const COLUMN_COLORS = [
 interface ColumnProps {
   column: BoardColumnType;
   colorIndex?: number;
-  onDrop: (itemId: string, sourceColumnId: string, targetColumnId: string) => void;
+  onDrop: (itemId: string, sourceColumnId: string, targetColumnId: string, targetIndex?: number) => void;
   onAddItem: (columnId: string, title: string) => void;
+  onDeleteItem: (itemId: string, columnId: string) => void;
+  onRenameItem: (itemId: string, newTitle: string) => void;
 }
 
-export default function Column({ column, colorIndex = 0, onDrop, onAddItem }: ColumnProps) {
+export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDeleteItem, onRenameItem }: ColumnProps) {
   const [dragOver, setDragOver] = useState(false);
+  const [dropIndex, setDropIndex] = useState<number | null>(null);
   const dragCounter = useRef(0);
+  const listRef = useRef<HTMLDivElement>(null);
   const colors = COLUMN_COLORS[colorIndex % COLUMN_COLORS.length];
+
+  const calcDropIndex = (clientY: number): number => {
+    if (!listRef.current) return column.items.length;
+    const cards = listRef.current.querySelectorAll("[data-card-id]");
+    for (let i = 0; i < cards.length; i++) {
+      const rect = cards[i].getBoundingClientRect();
+      const midY = rect.top + rect.height / 2;
+      if (clientY < midY) return i;
+    }
+    return cards.length;
+  };
 
   return (
     <div
@@ -42,22 +57,24 @@ export default function Column({ column, colorIndex = 0, onDrop, onAddItem }: Co
       onDragOver={(e) => {
         e.preventDefault();
         e.dataTransfer.dropEffect = "move";
+        setDropIndex(calcDropIndex(e.clientY));
       }}
       onDragLeave={() => {
         dragCounter.current--;
         if (dragCounter.current === 0) {
           setDragOver(false);
+          setDropIndex(null);
         }
       }}
       onDrop={(e) => {
         e.preventDefault();
         dragCounter.current = 0;
         setDragOver(false);
+        const currentDropIndex = dropIndex;
+        setDropIndex(null);
         try {
           const data = JSON.parse(e.dataTransfer.getData("text/plain"));
-          if (data.sourceColumnId !== column.id) {
-            onDrop(data.itemId, data.sourceColumnId, column.id);
-          }
+          onDrop(data.itemId, data.sourceColumnId, column.id, currentDropIndex ?? undefined);
         } catch {
           // ignore invalid drag data
         }
@@ -73,10 +90,23 @@ export default function Column({ column, colorIndex = 0, onDrop, onAddItem }: Co
         </span>
       </div>
 
-      <div className="flex flex-1 flex-col gap-2 overflow-y-auto px-2 pb-2">
-        {column.items.map((item) => (
-          <Card key={item.id} item={item} columnId={column.id} />
+      <div ref={listRef} className="flex flex-1 flex-col gap-2 overflow-y-auto px-2 pb-2">
+        {column.items.map((item, i) => (
+          <div key={item.id}>
+            {dropIndex === i && dragOver && (
+              <div className="h-0.5 rounded-full bg-blue-400 mx-1 mb-1" />
+            )}
+            <Card
+              item={item}
+              columnId={column.id}
+              onDelete={() => onDeleteItem(item.id, column.id)}
+              onRename={(newTitle) => onRenameItem(item.id, newTitle)}
+            />
+          </div>
         ))}
+        {dropIndex === column.items.length && dragOver && (
+          <div className="h-0.5 rounded-full bg-blue-400 mx-1" />
+        )}
         <AddCardForm onAdd={(title) => onAddItem(column.id, title)} />
       </div>
     </div>

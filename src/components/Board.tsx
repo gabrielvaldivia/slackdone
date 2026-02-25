@@ -22,8 +22,25 @@ export default function Board({ data, workspaceId, onRefresh }: BoardProps) {
   const handleDrop = async (
     itemId: string,
     sourceColumnId: string,
-    targetColumnId: string
+    targetColumnId: string,
+    targetIndex?: number
   ) => {
+    // Same-column reorder (local only, Slack has no ordering API)
+    if (sourceColumnId === targetColumnId && targetIndex !== undefined) {
+      setColumns((prev) => {
+        const next = prev.map((col) => ({ ...col, items: [...col.items] }));
+        const col = next.find((c) => c.id === sourceColumnId);
+        if (!col) return prev;
+        const itemIdx = col.items.findIndex((i) => i.id === itemId);
+        if (itemIdx < 0) return prev;
+        const [item] = col.items.splice(itemIdx, 1);
+        const insertAt = targetIndex > itemIdx ? targetIndex - 1 : targetIndex;
+        col.items.splice(insertAt, 0, item);
+        return next;
+      });
+      return;
+    }
+
     // Snapshot for rollback
     const prevColumns = columns.map((col) => ({
       ...col,
@@ -42,11 +59,15 @@ export default function Board({ data, workspaceId, onRefresh }: BoardProps) {
 
       const [item] = srcCol.items.splice(itemIdx, 1);
       item.statusValue = targetColumnId;
-      tgtCol.items.push(item);
+      if (targetIndex !== undefined) {
+        tgtCol.items.splice(targetIndex, 0, item);
+      } else {
+        tgtCol.items.push(item);
+      }
       return next;
     });
 
-    // Fire-and-forget API call — no refresh needed, auto-refresh will sync
+    // Fire-and-forget API call
     try {
       if (!data.statusColumn) return;
       const cells = [
@@ -68,9 +89,78 @@ export default function Board({ data, workspaceId, onRefresh }: BoardProps) {
       if (!res.ok) throw new Error("Update failed");
       setError("");
     } catch {
-      // Rollback on failure
       setColumns(prevColumns);
       setError("Failed to move item. Reverted.");
+      setTimeout(() => setError(""), 3000);
+    }
+  };
+
+  const handleDeleteItem = async (itemId: string, columnId: string) => {
+    // Optimistic removal
+    const prevColumns = columns.map((col) => ({
+      ...col,
+      items: [...col.items],
+    }));
+
+    setColumns((prev) => {
+      const next = prev.map((col) => ({ ...col, items: [...col.items] }));
+      const col = next.find((c) => c.id === columnId);
+      if (col) {
+        col.items = col.items.filter((i) => i.id !== itemId);
+      }
+      return next;
+    });
+
+    try {
+      const res = await fetch(
+        `/api/lists/${data.listId}/items/${itemId}?workspaceId=${workspaceId}`,
+        { method: "DELETE" }
+      );
+      if (!res.ok) throw new Error("Delete failed");
+    } catch {
+      setColumns(prevColumns);
+      setError("Failed to delete item. Reverted.");
+      setTimeout(() => setError(""), 3000);
+    }
+  };
+
+  const handleRenameItem = async (itemId: string, newTitle: string) => {
+    // Optimistic rename
+    setColumns((prev) =>
+      prev.map((col) => ({
+        ...col,
+        items: col.items.map((item) =>
+          item.id === itemId ? { ...item, title: newTitle } : item
+        ),
+      }))
+    );
+
+    try {
+      const cells = [
+        {
+          column_id: "name",
+          value: JSON.stringify([
+            {
+              type: "rich_text_section",
+              elements: [{ type: "text", text: newTitle }],
+            },
+          ]),
+        },
+      ];
+
+      const res = await fetch(
+        `/api/lists/${data.listId}/items/${itemId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ workspaceId, cells }),
+        }
+      );
+
+      if (!res.ok) throw new Error("Rename failed");
+    } catch {
+      onRefresh();
+      setError("Failed to rename item.");
       setTimeout(() => setError(""), 3000);
     }
   };
@@ -115,6 +205,8 @@ export default function Board({ data, workspaceId, onRefresh }: BoardProps) {
             colorIndex={index}
             onDrop={handleDrop}
             onAddItem={handleAddItem}
+            onDeleteItem={handleDeleteItem}
+            onRenameItem={handleRenameItem}
           />
         ))}
       </div>
