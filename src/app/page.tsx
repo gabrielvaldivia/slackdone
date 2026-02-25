@@ -37,6 +37,13 @@ export default function Home() {
 
   useEffect(() => {
     fetchWorkspaces();
+    // Show error from URL params (e.g. OAuth failure)
+    const params = new URLSearchParams(window.location.search);
+    const urlError = params.get("error");
+    if (urlError) {
+      setError(decodeURIComponent(urlError));
+      window.history.replaceState({}, "", "/");
+    }
   }, [fetchWorkspaces]);
 
   const fetchBoard = useCallback(async () => {
