@@ -103,9 +103,10 @@ export async function GET(
       allColumns: columns,
     });
   } catch (err) {
-    console.error("Get list items error:", err);
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("Get list items error:", msg);
     return NextResponse.json(
-      { error: "Failed to get list items" },
+      { error: msg },
       { status: 500 }
     );
   }
