@@ -64,7 +64,7 @@ export async function getListItemInfo(
 ) {
   const data = await slackFetch("slackLists.items.info", token, {
     list_id: listId,
-    item_id: itemId,
+    id: itemId,
   });
   return data;
 }
@@ -93,6 +93,28 @@ export async function updateListItem(
     item: { fields },
   });
   return data;
+}
+
+export async function downloadList(token: string, listId: string) {
+  // Start the download
+  const start = await slackFetch("slackLists.download.start", token, {
+    list_id: listId,
+  });
+  const downloadId = start.download_id;
+  if (!downloadId) return start;
+
+  // Poll for completion (up to 5 attempts)
+  for (let i = 0; i < 5; i++) {
+    await new Promise((r) => setTimeout(r, 1000));
+    const result = await slackFetch("slackLists.download.get", token, {
+      list_id: listId,
+      download_id: downloadId,
+    });
+    if (result.status === "complete" || result.data) {
+      return result;
+    }
+  }
+  return null;
 }
 
 export async function oauthAccess(code: string) {

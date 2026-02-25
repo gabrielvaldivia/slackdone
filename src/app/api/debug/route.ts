@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getWorkspace } from "@/lib/store";
-import { getListItemInfo, getListItems } from "@/lib/slack";
+import { getListItemInfo, getListItems, downloadList } from "@/lib/slack";
 
 export async function GET(request: NextRequest) {
   const workspaceId = request.nextUrl.searchParams.get("workspaceId");
@@ -20,17 +20,17 @@ export async function GET(request: NextRequest) {
   const token = workspace.userToken || workspace.botToken;
 
   try {
+    if (mode === "download") {
+      const data = await downloadList(token, listId);
+      return NextResponse.json(data);
+    }
+
     if (mode === "list") {
       const data = await getListItems(token, listId);
-      // Return just the keys to understand structure
       return NextResponse.json({
         topLevelKeys: Object.keys(data),
         hasSchema: !!data.schema,
-        schemaKeys: data.schema ? Object.keys(data.schema) : null,
-        hasColumns: !!data.columns,
-        columnsType: data.columns ? typeof data.columns : null,
-        firstItem: data.items?.[0] ? Object.keys(data.items[0]) : null,
-        firstItemFields: data.items?.[0]?.fields?.[0],
+        firstItem: data.items?.[0],
       });
     }
 
@@ -38,12 +38,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "need itemId for item mode" });
     }
     const data = await getListItemInfo(token, listId, itemId);
-    return NextResponse.json({
-      topLevelKeys: Object.keys(data),
-      schema: data.schema,
-      columns: data.columns,
-      item: data.item ? Object.keys(data.item) : null,
-    });
+    return NextResponse.json(data);
   } catch (err) {
     return NextResponse.json({
       error: err instanceof Error ? err.message : String(err),
