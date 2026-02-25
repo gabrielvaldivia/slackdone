@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { BoardColumn as BoardColumnType } from "@/lib/types";
 import Card from "./Card";
 import AddCardForm from "./AddCardForm";
@@ -13,23 +13,34 @@ interface ColumnProps {
 
 export default function Column({ column, onDrop, onAddItem }: ColumnProps) {
   const [dragOver, setDragOver] = useState(false);
+  const dragCounter = useRef(0);
 
   return (
     <div
       className={`flex w-72 shrink-0 flex-col border border-border ${
         dragOver ? "bg-gray-50" : "bg-transparent"
       } transition-colors`}
+      onDragEnter={(e) => {
+        e.preventDefault();
+        dragCounter.current++;
+        setDragOver(true);
+      }}
       onDragOver={(e) => {
         e.preventDefault();
         e.dataTransfer.dropEffect = "move";
-        setDragOver(true);
       }}
-      onDragLeave={() => setDragOver(false)}
+      onDragLeave={() => {
+        dragCounter.current--;
+        if (dragCounter.current === 0) {
+          setDragOver(false);
+        }
+      }}
       onDrop={(e) => {
         e.preventDefault();
+        dragCounter.current = 0;
         setDragOver(false);
         try {
-          const data = JSON.parse(e.dataTransfer.getData("application/json"));
+          const data = JSON.parse(e.dataTransfer.getData("text/plain"));
           if (data.sourceColumnId !== column.id) {
             onDrop(data.itemId, data.sourceColumnId, column.id);
           }

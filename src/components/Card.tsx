@@ -12,10 +12,8 @@ export default function Card({ item, columnId }: CardProps) {
     <div
       draggable
       onDragStart={(e) => {
-        e.dataTransfer.setData(
-          "application/json",
-          JSON.stringify({ itemId: item.id, sourceColumnId: columnId })
-        );
+        const payload = JSON.stringify({ itemId: item.id, sourceColumnId: columnId });
+        e.dataTransfer.setData("text/plain", payload);
         e.dataTransfer.effectAllowed = "move";
         (e.target as HTMLElement).style.opacity = "0.5";
       }}
