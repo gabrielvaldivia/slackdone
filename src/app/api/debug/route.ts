@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getSessionFromRequest } from "@/lib/session";
 import { getWorkspace } from "@/lib/store";
 import { getListItemInfo, getListItems, downloadList } from "@/lib/slack";
 
 export async function GET(request: NextRequest) {
+  const session = await getSessionFromRequest(request);
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const workspaceId = request.nextUrl.searchParams.get("workspaceId");
   const listId = request.nextUrl.searchParams.get("listId");
   const itemId = request.nextUrl.searchParams.get("itemId");
@@ -12,7 +18,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "need workspaceId, listId" });
   }
 
-  const workspace = await getWorkspace(workspaceId);
+  const workspace = await getWorkspace(session.userId, workspaceId);
   if (!workspace) {
     return NextResponse.json({ error: "workspace not found" });
   }

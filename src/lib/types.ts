@@ -1,3 +1,11 @@
+// Authenticated user
+export interface User {
+  id: string;
+  name: string;
+  avatar: string;
+  createdAt: number;
+}
+
 // Stored workspace connection
 export interface Workspace {
   id: string;

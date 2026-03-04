@@ -11,6 +11,12 @@ interface WorkspaceInfo {
   name: string;
 }
 
+interface UserInfo {
+  userId: string;
+  name: string;
+  avatar: string;
+}
+
 export default function Home() {
   const [hasEnvVars, setHasEnvVars] = useState(true);
   const [workspaces, setWorkspaces] = useState<WorkspaceInfo[]>([]);
@@ -19,6 +25,16 @@ export default function Home() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string>("");
   const [showAddList, setShowAddList] = useState(false);
+  const [user, setUser] = useState<UserInfo | null>(null);
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.user) setUser(data.user);
+      })
+      .catch(() => {});
+  }, []);
 
   const fetchWorkspaces = useCallback(async () => {
     try {
@@ -89,6 +105,14 @@ export default function Home() {
     fetchBoard();
   };
 
+  const handleLogout = async () => {
+    const form = document.createElement("form");
+    form.method = "POST";
+    form.action = "/api/auth/logout";
+    document.body.appendChild(form);
+    form.submit();
+  };
+
   const handleListAdded = () => {
     setShowAddList(false);
     fetchBoard();
@@ -109,6 +133,8 @@ export default function Home() {
         onListAdded={handleListAdded}
         lists={boardData?.lists || []}
         onListRemoved={fetchBoard}
+        user={user}
+        onLogout={handleLogout}
       />
 
       {error && (

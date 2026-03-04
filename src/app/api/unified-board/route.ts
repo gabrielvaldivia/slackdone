@@ -1,4 +1,5 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { getSessionFromRequest } from "@/lib/session";
 import { getWorkspaces, getSavedLists } from "@/lib/store";
 import { getListItems, getListItemInfo, getUsersInfo } from "@/lib/slack";
 import {
@@ -20,9 +21,14 @@ interface ListMeta {
   statusColumnKey: string | null;
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const session = await getSessionFromRequest(request);
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
-    const allWorkspaces = await getWorkspaces();
+    const allWorkspaces = await getWorkspaces(session.userId);
     if (allWorkspaces.length === 0) {
       return NextResponse.json({ columns: [], lists: [] });
     }
@@ -31,7 +37,7 @@ export async function GET() {
     const workspaceListPairs: { workspace: Workspace; savedLists: SavedList[] }[] =
       await Promise.all(
         allWorkspaces.map(async (ws) => {
-          const lists = await getSavedLists(ws.id);
+          const lists = await getSavedLists(session.userId, ws.id);
           return { workspace: ws, savedLists: lists };
         })
       );

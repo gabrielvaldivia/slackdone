@@ -8,11 +8,14 @@ interface AddListModalProps {
   onAdded: () => void;
 }
 
-function parseListId(input: string): string | null {
+function parseListInput(input: string): { listId: string; teamId: string | null } | null {
   const trimmed = input.trim();
-  if (/^F[A-Z0-9]+$/.test(trimmed)) return trimmed;
-  const match = trimmed.match(/slack\.com\/lists\/[^/]+\/(F[A-Z0-9]+)/);
-  if (match) return match[1];
+  if (/^F[A-Z0-9]+$/.test(trimmed)) return { listId: trimmed, teamId: null };
+  const match = trimmed.match(/slack\.com\/lists\/(T[A-Z0-9]+)\/(F[A-Z0-9]+)/);
+  if (match) return { teamId: match[1], listId: match[2] };
+  // Fallback: just extract the list ID without team
+  const listOnly = trimmed.match(/slack\.com\/lists\/[^/]+\/(F[A-Z0-9]+)/);
+  if (listOnly) return { listId: listOnly[1], teamId: null };
   return null;
 }
 
@@ -21,33 +24,61 @@ export default function AddListModal({
   onClose,
   onAdded,
 }: AddListModalProps) {
-  const [selectedWorkspace, setSelectedWorkspace] = useState(
-    workspaces.length === 1 ? workspaces[0].id : ""
-  );
   const [input, setInput] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const handleInputChange = (value: string) => {
+    setInput(value);
+    setError("");
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const listId = parseListId(input);
-    if (!listId) {
+    const parsed = parseListInput(input);
+    if (!parsed) {
       setError("Paste a Slack list URL or list ID (starts with F)");
       return;
     }
-    if (!selectedWorkspace) {
-      setError("Select a workspace");
+
+    // Match workspace from URL team ID, or use the only workspace
+    let wsId: string | undefined;
+    if (parsed.teamId) {
+      const match = workspaces.find((w) => w.id === parsed.teamId);
+      if (!match) {
+        setError("This list belongs to a workspace you haven't connected. Add the workspace first.");
+        return;
+      }
+      wsId = match.id;
+    } else if (workspaces.length === 1) {
+      wsId = workspaces[0].id;
+    } else {
+      setError("Paste a full Slack list URL so we can detect the workspace.");
       return;
     }
 
     setSaving(true);
     setError("");
     try {
+      // Fetch list to get the real title
+      let title = parsed.listId;
+      try {
+        const listRes = await fetch(
+          `/api/lists/${parsed.listId}?workspaceId=${wsId}`
+        );
+        if (listRes.ok) {
+          const listData = await listRes.json();
+          if (listData.listTitle) title = listData.listTitle;
+        }
+      } catch {
+        // Fall back to using the ID as title
+      }
+
       // Save the list reference
-      await fetch(`/api/workspaces/${selectedWorkspace}/lists`, {
+      await fetch(`/api/workspaces/${wsId}/lists`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ listId, title: listId }),
+        body: JSON.stringify({ listId: parsed.listId, title }),
       });
       onAdded();
     } catch {
@@ -68,25 +99,15 @@ export default function AddListModal({
         <h2 className="text-sm font-semibold mb-4">Add a Slack List</h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {workspaces.length > 1 && (
-            <div>
-              <label className="block text-xs text-muted mb-1">
-                Workspace
-              </label>
-              <select
-                value={selectedWorkspace}
-                onChange={(e) => setSelectedWorkspace(e.target.value)}
-                className="w-full rounded-md border border-border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-300"
-              >
-                <option value="">Select workspace...</option>
-                {workspaces.map((w) => (
-                  <option key={w.id} value={w.id}>
-                    {w.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+          <div className="rounded-md bg-gray-50 px-3 py-2 text-xs text-muted space-y-1">
+            <p>To get a list link:</p>
+            <ol className="list-decimal ml-4 space-y-0.5">
+              <li>Open the list in Slack</li>
+              <li>Click the <span className="font-medium text-foreground">...</span> menu</li>
+              <li>Click <span className="font-medium text-foreground">Share list</span></li>
+              <li>Click <span className="font-medium text-foreground">Copy link</span></li>
+            </ol>
+          </div>
 
           <div>
             <label className="block text-xs text-muted mb-1">
@@ -95,10 +116,7 @@ export default function AddListModal({
             <input
               type="text"
               value={input}
-              onChange={(e) => {
-                setInput(e.target.value);
-                setError("");
-              }}
+              onChange={(e) => handleInputChange(e.target.value)}
               placeholder="https://app.slack.com/lists/T.../F... or F..."
               className="w-full rounded-md border border-border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-300"
               autoFocus

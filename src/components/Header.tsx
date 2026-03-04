@@ -9,6 +9,12 @@ interface ListInfo {
   workspaceName: string;
 }
 
+interface UserInfo {
+  userId: string;
+  name: string;
+  avatar: string;
+}
+
 interface HeaderProps {
   workspaces: { id: string; name: string }[];
   onConnect: () => void;
@@ -19,6 +25,8 @@ interface HeaderProps {
   onListAdded: () => void;
   lists: ListInfo[];
   onListRemoved: () => void;
+  user?: UserInfo | null;
+  onLogout?: () => void;
 }
 
 export default function Header({
@@ -31,6 +39,8 @@ export default function Header({
   onListAdded,
   lists,
   onListRemoved,
+  user,
+  onLogout,
 }: HeaderProps) {
   const handleRemoveList = async (
     workspaceId: string,
@@ -138,6 +148,30 @@ export default function Header({
           >
             + Connect
           </button>
+        )}
+
+        {/* User menu */}
+        {user && (
+          <div className="relative group ml-2">
+            <button className="flex items-center gap-1.5 rounded-md border border-border px-2 py-1 text-xs hover:bg-gray-50 transition-colors">
+              {user.avatar && (
+                <img
+                  src={user.avatar}
+                  alt=""
+                  className="h-4 w-4 rounded-full"
+                />
+              )}
+              <span className="max-w-[100px] truncate">{user.name}</span>
+            </button>
+            <div className="absolute right-0 top-full z-10 mt-1 hidden group-hover:block min-w-[120px] rounded-md border border-border bg-white shadow-md">
+              <button
+                onClick={onLogout}
+                className="w-full px-3 py-2 text-xs text-left hover:bg-gray-50 text-red-600"
+              >
+                Sign out
+              </button>
+            </div>
+          </div>
         )}
       </div>
 

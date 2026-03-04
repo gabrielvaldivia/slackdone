@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getSessionFromRequest } from "@/lib/session";
 import { getWorkspace } from "@/lib/store";
 import { createListItem } from "@/lib/slack";
 
@@ -6,6 +7,11 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ listId: string }> }
 ) {
+  const session = await getSessionFromRequest(request);
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { listId } = await params;
   const body = await request.json();
   const { workspaceId, fields } = body;
@@ -17,7 +23,7 @@ export async function POST(
     );
   }
 
-  const workspace = await getWorkspace(workspaceId);
+  const workspace = await getWorkspace(session.userId, workspaceId);
   if (!workspace) {
     return NextResponse.json(
       { error: "Workspace not found" },

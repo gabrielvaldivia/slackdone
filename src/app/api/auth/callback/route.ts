@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getSessionFromRequest } from "@/lib/session";
 import { oauthAccess, getTeamInfo } from "@/lib/slack";
 import { addWorkspace } from "@/lib/store";
 
 export async function GET(request: NextRequest) {
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+
+  const session = await getSessionFromRequest(request);
+  if (!session) {
+    return NextResponse.redirect(`${baseUrl}/login`);
+  }
+
   const code = request.nextUrl.searchParams.get("code");
   const error = request.nextUrl.searchParams.get("error");
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
 
   if (error) {
     return NextResponse.redirect(`${baseUrl}?error=${error}`);
@@ -21,7 +28,7 @@ export async function GET(request: NextRequest) {
     const userToken = oauthData.authed_user?.access_token;
     const team = await getTeamInfo(botToken);
 
-    await addWorkspace({
+    await addWorkspace(session.userId, {
       id: team.id,
       name: team.name,
       botToken,

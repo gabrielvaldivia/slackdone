@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getSessionFromRequest } from "@/lib/session";
 import { getWorkspace } from "@/lib/store";
 import { updateListItem, deleteListItem } from "@/lib/slack";
 
@@ -6,6 +7,11 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ listId: string; itemId: string }> }
 ) {
+  const session = await getSessionFromRequest(request);
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { listId, itemId } = await params;
   const body = await request.json();
   const { workspaceId, cells } = body;
@@ -17,7 +23,7 @@ export async function PATCH(
     );
   }
 
-  const workspace = await getWorkspace(workspaceId);
+  const workspace = await getWorkspace(session.userId, workspaceId);
   if (!workspace) {
     return NextResponse.json(
       { error: "Workspace not found" },
@@ -44,6 +50,11 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ listId: string; itemId: string }> }
 ) {
+  const session = await getSessionFromRequest(request);
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { listId, itemId } = await params;
   const workspaceId = request.nextUrl.searchParams.get("workspaceId");
 
@@ -54,7 +65,7 @@ export async function DELETE(
     );
   }
 
-  const workspace = await getWorkspace(workspaceId);
+  const workspace = await getWorkspace(session.userId, workspaceId);
   if (!workspace) {
     return NextResponse.json(
       { error: "Workspace not found" },

@@ -8,7 +8,7 @@ import {
   setDoc,
   deleteDoc,
 } from "firebase/firestore";
-import { Workspace, SavedList } from "./types";
+import { Workspace, SavedList, User } from "./types";
 
 function getDb() {
   if (getApps().length === 0) {
@@ -20,50 +20,87 @@ function getDb() {
   return getFirestore();
 }
 
-const COLLECTION = "workspaces";
+function userWorkspacesPath(userId: string) {
+  return `users/${userId}/workspaces`;
+}
 
-export async function getWorkspaces(): Promise<Workspace[]> {
+function savedListsPath(userId: string, workspaceId: string) {
+  return `users/${userId}/workspaces/${workspaceId}/savedLists`;
+}
+
+export async function ensureUser(user: { id: string; name: string; avatar: string }) {
   const db = getDb();
-  const snapshot = await getDocs(collection(db, COLLECTION));
+  const ref = doc(db, "users", user.id);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) {
+    const userData: User = {
+      id: user.id,
+      name: user.name,
+      avatar: user.avatar,
+      createdAt: Date.now(),
+    };
+    await setDoc(ref, userData);
+  }
+}
+
+export async function getWorkspaces(userId: string): Promise<Workspace[]> {
+  const db = getDb();
+  const snapshot = await getDocs(collection(db, userWorkspacesPath(userId)));
   return snapshot.docs.map((d) => d.data() as Workspace);
 }
 
 export async function getWorkspace(
+  userId: string,
   id: string
 ): Promise<Workspace | undefined> {
   const db = getDb();
-  const snap = await getDoc(doc(db, COLLECTION, id));
+  const snap = await getDoc(doc(db, userWorkspacesPath(userId), id));
   return snap.exists() ? (snap.data() as Workspace) : undefined;
 }
 
-export async function addWorkspace(workspace: Workspace) {
+export async function addWorkspace(userId: string, workspace: Workspace) {
   const db = getDb();
-  await setDoc(doc(db, COLLECTION, workspace.id), workspace);
+  await setDoc(doc(db, userWorkspacesPath(userId), workspace.id), workspace);
 }
 
-export async function removeWorkspace(id: string) {
+export async function removeWorkspace(userId: string, id: string) {
   const db = getDb();
-  await deleteDoc(doc(db, COLLECTION, id));
+  await deleteDoc(doc(db, userWorkspacesPath(userId), id));
 }
 
 // Saved lists (subcollection under workspace)
-export async function getSavedLists(workspaceId: string): Promise<SavedList[]> {
+export async function getSavedLists(userId: string, workspaceId: string): Promise<SavedList[]> {
   const db = getDb();
   const snapshot = await getDocs(
-    collection(db, COLLECTION, workspaceId, "savedLists")
+    collection(db, savedListsPath(userId, workspaceId))
   );
   return snapshot.docs.map((d) => d.data() as SavedList);
 }
 
-export async function addSavedList(workspaceId: string, list: SavedList) {
+export async function addSavedList(userId: string, workspaceId: string, list: SavedList) {
   const db = getDb();
   await setDoc(
-    doc(db, COLLECTION, workspaceId, "savedLists", list.listId),
+    doc(db, savedListsPath(userId, workspaceId), list.listId),
     list
   );
 }
 
-export async function removeSavedList(workspaceId: string, listId: string) {
+export async function removeSavedList(userId: string, workspaceId: string, listId: string) {
   const db = getDb();
-  await deleteDoc(doc(db, COLLECTION, workspaceId, "savedLists", listId));
+  await deleteDoc(doc(db, savedListsPath(userId, workspaceId), listId));
+}
+
+// Legacy accessors for migration
+export async function getLegacyWorkspaces(): Promise<Workspace[]> {
+  const db = getDb();
+  const snapshot = await getDocs(collection(db, "workspaces"));
+  return snapshot.docs.map((d) => d.data() as Workspace);
+}
+
+export async function getLegacySavedLists(workspaceId: string): Promise<SavedList[]> {
+  const db = getDb();
+  const snapshot = await getDocs(
+    collection(db, "workspaces", workspaceId, "savedLists")
+  );
+  return snapshot.docs.map((d) => d.data() as SavedList);
 }
