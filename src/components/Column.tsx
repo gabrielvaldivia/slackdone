@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { BoardColumn as BoardColumnType, BoardItem } from "@/lib/types";
 import Card from "./Card";
 import AddCardForm from "./AddCardForm";
+import { FilterOption } from "./FilterDropdown";
 
 const COLUMN_COLORS = [
   { bg: "var(--col-0-bg)", header: "var(--col-0)" },
@@ -20,7 +21,7 @@ interface ColumnProps {
   column: BoardColumnType;
   colorIndex?: number;
   onDrop: (itemId: string, sourceColumnId: string, targetColumnId: string, targetIndex?: number) => void;
-  onAddItem: (columnId: string, title: string) => void;
+  onAddItem: (columnId: string, title: string, assigneeIds: string[], clientId: string | null) => void;
   onDeleteItem: (itemId: string, columnId: string) => void;
   onRenameItem: (itemId: string, newTitle: string) => void;
   onCardClick?: (item: BoardItem) => void;
@@ -28,9 +29,11 @@ interface ColumnProps {
   collapsed?: boolean;
   onUnhide?: () => void;
   clientColorMap?: Map<string, { bg: string; text: string }>;
+  assigneeOptions?: FilterOption[];
+  clientOptions?: FilterOption[];
 }
 
-export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDeleteItem, onRenameItem, onCardClick, onHide, collapsed, onUnhide, clientColorMap }: ColumnProps) {
+export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDeleteItem, onRenameItem, onCardClick, onHide, collapsed, onUnhide, clientColorMap, assigneeOptions, clientOptions }: ColumnProps) {
   const [dragOver, setDragOver] = useState(false);
   const [dropIndex, setDropIndex] = useState<number | null>(null);
   const dragCounter = useRef(0);
@@ -151,7 +154,11 @@ export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDe
         {dropIndex === column.items.length && dragOver && (
           <div className="h-0.5 rounded-full bg-blue-400 mx-1" />
         )}
-        <AddCardForm onAdd={(title) => onAddItem(column.id, title)} />
+        <AddCardForm
+          onAdd={(title, assigneeIds, clientId) => onAddItem(column.id, title, assigneeIds, clientId)}
+          assigneeOptions={assigneeOptions}
+          clientOptions={clientOptions}
+        />
       </div>
     </div>
   );

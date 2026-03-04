@@ -58,19 +58,31 @@ export default function Board({ data, onRefresh }: BoardProps) {
     return map;
   }, [columns]);
 
-  // Collect unique assignees from all items
+  // Collect unique assignees from all items, merging by display name across workspaces
   const assigneeOptions = useMemo<FilterOption[]>(() => {
-    const map = new Map<string, FilterOption>();
+    const byName = new Map<string, FilterOption>();
     for (const col of columns) {
       for (const item of col.items) {
         for (const a of item.assignees || []) {
-          if (!map.has(a.id)) {
-            map.set(a.id, { id: a.id, name: a.displayName || a.name, avatar: a.avatar });
+          const name = a.displayName || a.name;
+          const key = name.toLowerCase();
+          const existing = byName.get(key);
+          if (existing) {
+            // Merge this user ID into the existing entry
+            if (!existing.ids!.includes(a.id)) {
+              existing.ids!.push(a.id);
+            }
+            // Prefer an avatar if we don't have one yet
+            if (!existing.avatar && a.avatar) {
+              existing.avatar = a.avatar;
+            }
+          } else {
+            byName.set(key, { id: a.id, name, avatar: a.avatar, ids: [a.id] });
           }
         }
       }
     }
-    return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
+    return [...byName.values()].sort((a, b) => a.name.localeCompare(b.name));
   }, [columns]);
 
   // Collect unique client names from all items
@@ -95,12 +107,26 @@ export default function Board({ data, onRefresh }: BoardProps) {
     const hasAssigneeFilter = filterAssignees.size > 0;
     const hasClientFilter = filterClients.size > 0;
     if (!hasAssigneeFilter && !hasClientFilter) return columns;
+
+    // Expand selected assignee option IDs to all merged user IDs
+    const expandedAssigneeIds = new Set<string>();
+    if (hasAssigneeFilter) {
+      for (const selectedId of filterAssignees) {
+        const opt = assigneeOptions.find((o) => o.id === selectedId);
+        if (opt?.ids) {
+          for (const uid of opt.ids) expandedAssigneeIds.add(uid);
+        } else {
+          expandedAssigneeIds.add(selectedId);
+        }
+      }
+    }
+
     return columns.map((col) => ({
       ...col,
       items: col.items.filter((item) => {
         if (hasAssigneeFilter) {
           const ids = (item.assignees || []).map((a) => a.id);
-          if (!ids.some((id) => filterAssignees.has(id))) return false;
+          if (!ids.some((id) => expandedAssigneeIds.has(id))) return false;
         }
         if (hasClientFilter) {
           const name = getClientName(item);
@@ -109,7 +135,7 @@ export default function Board({ data, onRefresh }: BoardProps) {
         return true;
       }),
     }));
-  }, [columns, filterAssignees, filterClients]);
+  }, [columns, filterAssignees, filterClients, assigneeOptions]);
 
   const hideColumn = (id: string) => {
     setHiddenColumns((prev) => {
@@ -132,6 +158,21 @@ export default function Board({ data, onRefresh }: BoardProps) {
   const visibleColumns = applyFilters.filter((c) => !hiddenColumns.has(c.id));
   const hiddenColumnsList = applyFilters.filter((c) => hiddenColumns.has(c.id));
   const hiddenCount = hiddenColumnsList.length;
+
+  // Build a map from client name → list metadata (for auto-targeting on add)
+  const clientListMap = useMemo(() => {
+    const map = new Map<string, { listId: string; workspaceId: string }>();
+    if (!data.lists) return map;
+    for (const col of columns) {
+      for (const item of col.items) {
+        const name = getClientName(item);
+        if (name && !map.has(name) && item.sourceListId && item.sourceWorkspaceId) {
+          map.set(name, { listId: item.sourceListId, workspaceId: item.sourceWorkspaceId });
+        }
+      }
+    }
+    return map;
+  }, [columns, data.lists]);
 
   // Keep selectedItem in sync when columns update
   useEffect(() => {
@@ -450,22 +491,30 @@ export default function Board({ data, onRefresh }: BoardProps) {
     }
   };
 
-  const handleAddItem = async (columnId: string, title: string) => {
-    // For adding items in unified view, we need to pick a list.
-    // Use the first list that has this status column option, or the first list overall.
-    const targetList = data.lists?.[0];
+  const handleAddItem = async (columnId: string, title: string, assigneeIds: string[] = [], clientId: string | null = null) => {
+    // Resolve target list: if client is selected and maps to a list, use that; else first list
+    let targetList = data.lists?.[0];
+    if (clientId && clientListMap.has(clientId)) {
+      const mapped = clientListMap.get(clientId)!;
+      const found = data.lists?.find(
+        (l) => l.listId === mapped.listId && l.workspaceId === mapped.workspaceId
+      );
+      if (found) targetList = found;
+    }
     if (!targetList) return;
 
     const fields: Record<string, unknown> = { title };
 
-    if (targetList.statusColumnId && columnId !== "__none__" && columnId !== "no status") {
-      // Resolve the column name back to an option ID for this list
-      try {
-        const res = await fetch(
-          `/api/lists/${targetList.listId}?workspaceId=${targetList.workspaceId}`
-        );
-        if (res.ok) {
-          const listData = await res.json();
+    // Fetch the list schema to resolve column IDs for status, assignee, and client
+    try {
+      const res = await fetch(
+        `/api/lists/${targetList.listId}?workspaceId=${targetList.workspaceId}`
+      );
+      if (res.ok) {
+        const listData = await res.json();
+
+        // Status field
+        if (targetList.statusColumnId && columnId !== "__none__" && columnId !== "no status") {
           if (listData.statusColumn?.options) {
             for (const opt of listData.statusColumn.options) {
               if (opt.name.toLowerCase().trim() === columnId) {
@@ -475,9 +524,61 @@ export default function Board({ data, onRefresh }: BoardProps) {
             }
           }
         }
-      } catch {
-        // ignore, create without status
+
+        // Assignee field — find first people/user column
+        // Resolve selected option IDs to the correct user IDs for this workspace
+        if (assigneeIds.length > 0 && listData.columns) {
+          const peopleCol = listData.columns.find(
+            (c: { type: string }) => c.type === "people" || c.type === "user"
+          );
+          if (peopleCol) {
+            // Build a set of all user IDs that belong to the target workspace
+            const workspaceUserIds = new Set<string>();
+            for (const col of columns) {
+              for (const item of col.items) {
+                if (item.sourceWorkspaceId === targetList.workspaceId) {
+                  for (const a of item.assignees || []) {
+                    workspaceUserIds.add(a.id);
+                  }
+                }
+              }
+            }
+
+            // For each selected assignee, pick the user ID that exists in this workspace
+            const resolvedIds: string[] = [];
+            for (const selectedId of assigneeIds) {
+              const opt = assigneeOptions.find((o) => o.id === selectedId);
+              if (opt?.ids) {
+                const match = opt.ids.find((uid) => workspaceUserIds.has(uid));
+                if (match) resolvedIds.push(match);
+                else resolvedIds.push(selectedId); // fallback
+              } else {
+                resolvedIds.push(selectedId);
+              }
+            }
+            fields[peopleCol.id] = resolvedIds;
+          }
+        }
+
+        // Client field — find select column labeled "client"
+        if (clientId && listData.columns) {
+          const clientCol = listData.columns.find(
+            (c: { type: string; name: string }) =>
+              (c.type === "select" || c.type === "status") &&
+              c.name.toLowerCase() === "client"
+          );
+          if (clientCol?.options) {
+            const match = clientCol.options.find(
+              (o: { name: string }) => o.name === clientId
+            );
+            if (match) {
+              fields[clientCol.id] = { id: match.id };
+            }
+          }
+        }
       }
+    } catch {
+      // ignore, create with what we have
     }
 
     try {
@@ -557,6 +658,8 @@ export default function Board({ data, onRefresh }: BoardProps) {
               onCardClick={setSelectedItem}
               onHide={() => hideColumn(column.id)}
               clientColorMap={clientColorMap}
+              assigneeOptions={assigneeOptions}
+              clientOptions={clientOptions}
             />
           );
         })}
@@ -575,6 +678,8 @@ export default function Board({ data, onRefresh }: BoardProps) {
               clientColorMap={clientColorMap}
               collapsed
               onUnhide={() => unhideColumn(column.id)}
+              assigneeOptions={assigneeOptions}
+              clientOptions={clientOptions}
             />
           );
         })}

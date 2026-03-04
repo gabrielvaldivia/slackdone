@@ -7,6 +7,8 @@ export interface FilterOption {
   name: string;
   avatar?: string;
   badgeColor?: { bg: string; text: string };
+  /** When a person exists across multiple workspaces, all their user IDs */
+  ids?: string[];
 }
 
 interface FilterDropdownProps {
