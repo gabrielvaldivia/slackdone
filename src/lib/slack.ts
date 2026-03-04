@@ -92,18 +92,20 @@ export async function downloadList(token: string, listId: string) {
   return null;
 }
 
-// In-memory user profile cache (per-process, clears on restart)
-const userCache = new Map<string, { id: string; name: string; displayName: string; avatar: string }>();
+// In-memory user profile cache with 5-minute TTL
+const USER_CACHE_TTL = 5 * 60 * 1000;
+const userCache = new Map<string, { profile: { id: string; name: string; displayName: string; avatar: string }; ts: number }>();
 
 export async function getUsersInfo(
   token: string,
   userIds: string[]
 ): Promise<Map<string, { id: string; name: string; displayName: string; avatar: string }>> {
   const result = new Map<string, { id: string; name: string; displayName: string; avatar: string }>();
+  const now = Date.now();
   const toFetch = userIds.filter((id) => {
     const cached = userCache.get(id);
-    if (cached) {
-      result.set(id, cached);
+    if (cached && now - cached.ts < USER_CACHE_TTL) {
+      result.set(id, cached.profile);
       return false;
     }
     return true;
@@ -124,7 +126,7 @@ export async function getUsersInfo(
           displayName: user?.profile?.display_name || user?.real_name || user?.name || userId,
           avatar: user?.profile?.image_48 || user?.profile?.image_32 || "",
         };
-        userCache.set(userId, profile);
+        userCache.set(userId, { profile, ts: now });
         result.set(userId, profile);
       } catch {
         const fallback = { id: userId, name: userId, displayName: userId, avatar: "" };

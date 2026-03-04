@@ -68,11 +68,9 @@ export default function Board({ data, onRefresh }: BoardProps) {
           const key = name.toLowerCase();
           const existing = byName.get(key);
           if (existing) {
-            // Merge this user ID into the existing entry
             if (!existing.ids!.includes(a.id)) {
               existing.ids!.push(a.id);
             }
-            // Prefer an avatar if we don't have one yet
             if (!existing.avatar && a.avatar) {
               existing.avatar = a.avatar;
             }
