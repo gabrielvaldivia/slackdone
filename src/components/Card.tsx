@@ -6,6 +6,7 @@ import { BoardItem } from "@/lib/types";
 interface CardProps {
   item: BoardItem;
   columnId: string;
+  clientColorMap?: Map<string, { bg: string; text: string }>;
   onDelete?: () => void;
   onRename?: (newTitle: string) => void;
   onClick?: () => void;
@@ -20,11 +21,36 @@ function getInitials(name: string): string {
     .toUpperCase();
 }
 
-export default function Card({ item, columnId, onDelete, onRename, onClick }: CardProps) {
+export const BADGE_COLORS = [
+  { bg: "#DBEAFE", text: "#1E40AF" },  // blue
+  { bg: "#FDE68A", text: "#92400E" },  // amber
+  { bg: "#D1FAE5", text: "#065F46" },  // emerald
+  { bg: "#E9D5FF", text: "#6B21A8" },  // purple
+  { bg: "#FED7AA", text: "#9A3412" },  // orange
+  { bg: "#CFFAFE", text: "#155E75" },  // cyan
+  { bg: "#FECDD3", text: "#9F1239" },  // rose
+  { bg: "#D9F99D", text: "#3F6212" },  // lime
+  { bg: "#C7D2FE", text: "#3730A3" },  // indigo
+  { bg: "#FDE047", text: "#713F12" },  // yellow
+  { bg: "#FBCFE8", text: "#9D174D" },  // pink
+  { bg: "#A7F3D0", text: "#064E3B" },  // teal
+];
+
+export function getClientName(item: BoardItem): string {
+  const clientField = item.fields?.find(
+    (f) => f.label.toLowerCase() === "client"
+  );
+  if (clientField?.displayValue) return clientField.displayValue;
+  return item.workspaceName || "";
+}
+
+export default function Card({ item, columnId, clientColorMap, onDelete, onRename, onClick }: CardProps) {
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(item.title);
   const isDragging = useRef(false);
   const assignees = item.assignees || [];
+  const clientName = getClientName(item);
+  const badgeColor = clientName ? clientColorMap?.get(clientName) ?? null : null;
 
   const handleSave = () => {
     const trimmed = editValue.trim();
@@ -40,7 +66,12 @@ export default function Card({ item, columnId, onDelete, onRename, onClick }: Ca
       draggable={!editing}
       onDragStart={(e) => {
         isDragging.current = true;
-        const payload = JSON.stringify({ itemId: item.id, sourceColumnId: columnId });
+        const payload = JSON.stringify({
+          itemId: item.id,
+          sourceColumnId: columnId,
+          sourceWorkspaceId: item.sourceWorkspaceId,
+          sourceListId: item.sourceListId,
+        });
         e.dataTransfer.setData("text/plain", payload);
         e.dataTransfer.effectAllowed = "move";
         (e.target as HTMLElement).style.opacity = "0.5";
@@ -96,28 +127,41 @@ export default function Card({ item, columnId, onDelete, onRename, onClick }: Ca
         <div className="pr-4">{item.title}</div>
       )}
 
-      {/* Assignee avatars */}
-      {assignees.length > 0 && (
-        <div className="mt-2 flex items-center gap-1">
-          {assignees.map((user) => (
-            <div
-              key={user.id}
-              title={user.displayName}
-              className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-200 text-[10px] font-medium text-gray-600 overflow-hidden"
-            >
-              {user.avatar ? (
-                <img
-                  src={user.avatar}
-                  alt={user.displayName}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                getInitials(user.displayName)
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+      {/* Footer: client badge + assignee avatars */}
+      <div className="mt-2 flex items-center justify-between">
+        {clientName && badgeColor ? (
+          <span
+            className="rounded-full px-2 py-0.5 text-[10px] font-medium truncate max-w-[120px]"
+            style={{ backgroundColor: badgeColor.bg, color: badgeColor.text }}
+            title={clientName}
+          >
+            {clientName}
+          </span>
+        ) : (
+          <span />
+        )}
+        {assignees.length > 0 && (
+          <div className="flex items-center gap-1">
+            {assignees.map((user) => (
+              <div
+                key={user.id}
+                title={user.displayName}
+                className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-200 text-[10px] font-medium text-gray-600 overflow-hidden"
+              >
+                {user.avatar ? (
+                  <img
+                    src={user.avatar}
+                    alt={user.displayName}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  getInitials(user.displayName)
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -4,12 +4,14 @@ interface EmptyStateProps {
   hasEnvVars: boolean;
   hasWorkspaces: boolean;
   onConnect: () => void;
+  onAddList?: () => void;
 }
 
 export default function EmptyState({
   hasEnvVars,
   hasWorkspaces,
   onConnect,
+  onAddList,
 }: EmptyStateProps) {
   if (!hasEnvVars) {
     return (
@@ -55,11 +57,19 @@ NEXT_PUBLIC_BASE_URL=https://your-app.vercel.app`}
 
   return (
     <div className="flex flex-1 items-center justify-center">
-      <div className="space-y-2 text-center">
-        <h2 className="text-lg font-medium">Select a list</h2>
+      <div className="space-y-4 text-center">
+        <h2 className="text-lg font-medium">No lists added yet</h2>
         <p className="text-sm text-muted">
-          Choose a workspace and list from the header to view your board.
+          Add a Slack list to see your tasks on a unified board.
         </p>
+        {onAddList && (
+          <button
+            onClick={onAddList}
+            className="border border-foreground bg-foreground px-4 py-2 text-sm text-background hover:bg-transparent hover:text-foreground transition-colors"
+          >
+            + Add List
+          </button>
+        )}
       </div>
     </div>
   );

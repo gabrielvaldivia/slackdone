@@ -19,7 +19,13 @@ export default function WorkspacePicker({
     <div className="flex items-center gap-2">
       <select
         value={selected}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => {
+          if (e.target.value === "__add__") {
+            window.location.href = "/api/auth/install";
+          } else {
+            onChange(e.target.value);
+          }
+        }}
         className="border border-border bg-transparent px-2 py-1 text-sm outline-none"
       >
         <option value="">Select workspace</option>
@@ -28,6 +34,7 @@ export default function WorkspacePicker({
             {w.name}
           </option>
         ))}
+        <option value="__add__">+ Add workspace</option>
       </select>
       {selected && (
         <button

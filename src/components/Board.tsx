@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { UnifiedBoardData, BoardColumn as BoardColumnType, BoardItem } from "@/lib/types";
 import Column from "./Column";
 import CardDetailModal from "./CardDetailModal";
+import FilterDropdown, { FilterOption } from "./FilterDropdown";
+import { BADGE_COLORS, getClientName } from "./Card";
 
 interface BoardProps {
   data: UnifiedBoardData;
@@ -32,10 +34,82 @@ export default function Board({ data, onRefresh }: BoardProps) {
   const [selectedItem, setSelectedItem] = useState<BoardItem | null>(null);
   const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(loadHidden);
   const [showHidden, setShowHidden] = useState(false);
+  const [filterAssignees, setFilterAssignees] = useState<Set<string>>(new Set());
+  const [filterClients, setFilterClients] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     setColumns(data.columns);
   }, [data]);
+
+  // Build a map of client name -> unique color, assigned by sorted order
+  const clientColorMap = useMemo(() => {
+    const names = new Set<string>();
+    for (const col of columns) {
+      for (const item of col.items) {
+        const name = getClientName(item);
+        if (name) names.add(name);
+      }
+    }
+    const sorted = [...names].sort();
+    const map = new Map<string, { bg: string; text: string }>();
+    sorted.forEach((name, i) => {
+      map.set(name, BADGE_COLORS[i % BADGE_COLORS.length]);
+    });
+    return map;
+  }, [columns]);
+
+  // Collect unique assignees from all items
+  const assigneeOptions = useMemo<FilterOption[]>(() => {
+    const map = new Map<string, FilterOption>();
+    for (const col of columns) {
+      for (const item of col.items) {
+        for (const a of item.assignees || []) {
+          if (!map.has(a.id)) {
+            map.set(a.id, { id: a.id, name: a.displayName || a.name, avatar: a.avatar });
+          }
+        }
+      }
+    }
+    return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }, [columns]);
+
+  // Collect unique client names from all items
+  const clientOptions = useMemo<FilterOption[]>(() => {
+    const opts: FilterOption[] = [];
+    const seen = new Set<string>();
+    for (const col of columns) {
+      for (const item of col.items) {
+        const name = getClientName(item);
+        if (name && !seen.has(name)) {
+          seen.add(name);
+          const color = clientColorMap.get(name);
+          opts.push({ id: name, name, badgeColor: color });
+        }
+      }
+    }
+    return opts.sort((a, b) => a.name.localeCompare(b.name));
+  }, [columns, clientColorMap]);
+
+  // Apply filters to columns
+  const applyFilters = useMemo(() => {
+    const hasAssigneeFilter = filterAssignees.size > 0;
+    const hasClientFilter = filterClients.size > 0;
+    if (!hasAssigneeFilter && !hasClientFilter) return columns;
+    return columns.map((col) => ({
+      ...col,
+      items: col.items.filter((item) => {
+        if (hasAssigneeFilter) {
+          const ids = (item.assignees || []).map((a) => a.id);
+          if (!ids.some((id) => filterAssignees.has(id))) return false;
+        }
+        if (hasClientFilter) {
+          const name = getClientName(item);
+          if (!filterClients.has(name)) return false;
+        }
+        return true;
+      }),
+    }));
+  }, [columns, filterAssignees, filterClients]);
 
   const hideColumn = (id: string) => {
     setHiddenColumns((prev) => {
@@ -55,8 +129,8 @@ export default function Board({ data, onRefresh }: BoardProps) {
     });
   };
 
-  const visibleColumns = columns.filter((c) => !hiddenColumns.has(c.id));
-  const hiddenColumnsList = columns.filter((c) => hiddenColumns.has(c.id));
+  const visibleColumns = applyFilters.filter((c) => !hiddenColumns.has(c.id));
+  const hiddenColumnsList = applyFilters.filter((c) => hiddenColumns.has(c.id));
   const hiddenCount = hiddenColumnsList.length;
 
   // Keep selectedItem in sync when columns update
@@ -432,27 +506,45 @@ export default function Board({ data, onRefresh }: BoardProps) {
         </div>
       )}
 
-      {hiddenCount > 0 && (
+      {(assigneeOptions.length > 0 || clientOptions.length > 0 || hiddenCount > 0) && (
         <div className="flex items-center gap-2 px-4 pt-3">
-          <button
-            onClick={() => setShowHidden((v) => !v)}
-            className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-200"
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              {showHidden ? (
-                <><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></>
-              ) : (
-                <><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" /><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" /><line x1="1" y1="1" x2="23" y2="23" /></>
-              )}
-            </svg>
-            {showHidden ? "Hide" : "Show"} {hiddenCount} hidden
-          </button>
+          {assigneeOptions.length > 0 && (
+            <FilterDropdown
+              label="Assignee"
+              options={assigneeOptions}
+              selected={filterAssignees}
+              onChange={setFilterAssignees}
+            />
+          )}
+          {clientOptions.length > 0 && (
+            <FilterDropdown
+              label="Client"
+              options={clientOptions}
+              selected={filterClients}
+              onChange={setFilterClients}
+            />
+          )}
+          {hiddenCount > 0 && (
+            <button
+              onClick={() => setShowHidden((v) => !v)}
+              className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-200"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                {showHidden ? (
+                  <><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></>
+                ) : (
+                  <><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" /><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" /><line x1="1" y1="1" x2="23" y2="23" /></>
+                )}
+              </svg>
+              {showHidden ? "Hide" : "Show"} {hiddenCount} hidden
+            </button>
+          )}
         </div>
       )}
 
       <div className="flex flex-1 gap-4 overflow-x-auto p-4">
         {visibleColumns.map((column) => {
-          const originalIndex = columns.indexOf(column);
+          const originalIndex = columns.findIndex((c) => c.id === column.id);
           return (
             <Column
               key={column.id}
@@ -464,11 +556,12 @@ export default function Board({ data, onRefresh }: BoardProps) {
               onRenameItem={handleRenameItem}
               onCardClick={setSelectedItem}
               onHide={() => hideColumn(column.id)}
+              clientColorMap={clientColorMap}
             />
           );
         })}
         {showHidden && hiddenColumnsList.map((column) => {
-          const originalIndex = columns.indexOf(column);
+          const originalIndex = columns.findIndex((c) => c.id === column.id);
           return (
             <Column
               key={column.id}
@@ -479,6 +572,7 @@ export default function Board({ data, onRefresh }: BoardProps) {
               onDeleteItem={handleDeleteItem}
               onRenameItem={handleRenameItem}
               onCardClick={setSelectedItem}
+              clientColorMap={clientColorMap}
               collapsed
               onUnhide={() => unhideColumn(column.id)}
             />

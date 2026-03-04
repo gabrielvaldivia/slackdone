@@ -27,9 +27,10 @@ interface ColumnProps {
   onHide?: () => void;
   collapsed?: boolean;
   onUnhide?: () => void;
+  clientColorMap?: Map<string, { bg: string; text: string }>;
 }
 
-export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDeleteItem, onRenameItem, onCardClick, onHide, collapsed, onUnhide }: ColumnProps) {
+export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDeleteItem, onRenameItem, onCardClick, onHide, collapsed, onUnhide, clientColorMap }: ColumnProps) {
   const [dragOver, setDragOver] = useState(false);
   const [dropIndex, setDropIndex] = useState<number | null>(null);
   const dragCounter = useRef(0);
@@ -140,6 +141,7 @@ export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDe
             <Card
               item={item}
               columnId={column.id}
+              clientColorMap={clientColorMap}
               onDelete={() => onDeleteItem(item.id, column.id)}
               onRename={(newTitle) => onRenameItem(item.id, newTitle)}
               onClick={() => onCardClick?.(item)}

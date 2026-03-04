@@ -98,4 +98,14 @@ export interface BoardItem {
   fields?: BoardItemField[];
   assignees?: UserProfile[];
   rawItem: SlackListItem;
+  sourceWorkspaceId?: string;
+  sourceListId?: string;
+  workspaceName?: string;
+}
+
+// Unified board merging multiple lists across workspaces
+export interface UnifiedBoardData {
+  columns: BoardColumn[];
+  lists: { listId: string; listTitle: string; workspaceId: string; workspaceName: string; statusColumnId: string | null }[];
+  schema?: SchemaField[];
 }

@@ -112,7 +112,11 @@ export async function getUsersInfo(
   await Promise.all(
     toFetch.map(async (userId) => {
       try {
-        const data = await slackFetch("users.info", token, { user: userId });
+        const res = await fetch(`${SLACK_API}/users.info?user=${userId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error);
         const user = data.user;
         const profile = {
           id: userId,
@@ -123,7 +127,6 @@ export async function getUsersInfo(
         userCache.set(userId, profile);
         result.set(userId, profile);
       } catch {
-        // Graceful fallback — scope may be missing
         const fallback = { id: userId, name: userId, displayName: userId, avatar: "" };
         result.set(userId, fallback);
       }
