@@ -24,9 +24,12 @@ interface ColumnProps {
   onDeleteItem: (itemId: string, columnId: string) => void;
   onRenameItem: (itemId: string, newTitle: string) => void;
   onCardClick?: (item: BoardItem) => void;
+  onHide?: () => void;
+  collapsed?: boolean;
+  onUnhide?: () => void;
 }
 
-export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDeleteItem, onRenameItem, onCardClick }: ColumnProps) {
+export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDeleteItem, onRenameItem, onCardClick, onHide, collapsed, onUnhide }: ColumnProps) {
   const [dragOver, setDragOver] = useState(false);
   const [dropIndex, setDropIndex] = useState<number | null>(null);
   const dragCounter = useRef(0);
@@ -44,9 +47,33 @@ export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDe
     return cards.length;
   };
 
+  if (collapsed) {
+    return (
+      <div
+        className="flex w-16 shrink-0 flex-col items-center rounded-xl py-3 gap-2 cursor-pointer group"
+        style={{ backgroundColor: colors.bg }}
+        onClick={onUnhide}
+        title="Click to unhide"
+      >
+        <span
+          className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold text-white"
+          style={{ backgroundColor: colors.header }}
+        >
+          {column.items.length}
+        </span>
+        <span
+          className="text-[10px] font-semibold uppercase tracking-wider text-center"
+          style={{ color: colors.header, writingMode: "vertical-lr" }}
+        >
+          {column.name}
+        </span>
+      </div>
+    );
+  }
+
   return (
     <div
-      className={`flex w-72 shrink-0 flex-col rounded-xl transition-colors ${
+      className={`group/col flex w-72 shrink-0 flex-col rounded-xl transition-colors ${
         dragOver ? "ring-2 ring-blue-300" : ""
       }`}
       style={{ backgroundColor: colors.bg }}
@@ -81,7 +108,7 @@ export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDe
         }
       }}
     >
-      <div className="px-3 py-3">
+      <div className="flex items-center justify-between px-3 py-3">
         <span
           className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-white"
           style={{ backgroundColor: colors.header }}
@@ -89,6 +116,19 @@ export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDe
           {column.name}
           <span className="text-white/70">{column.items.length}</span>
         </span>
+        {onHide && (
+          <button
+            onClick={onHide}
+            className="rounded p-1 text-gray-400 opacity-0 transition-opacity hover:text-gray-600 group-hover/col:opacity-100"
+            title="Hide column"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+              <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+              <line x1="1" y1="1" x2="23" y2="23" />
+            </svg>
+          </button>
+        )}
       </div>
 
       <div ref={listRef} className="flex flex-1 flex-col gap-2 overflow-y-auto px-2 pb-2">
