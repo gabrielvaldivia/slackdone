@@ -66,7 +66,7 @@ export default function Header({
         <h1 className="text-sm font-semibold tracking-tight">
           Slackdone
           {refreshing && (
-            <span className="ml-2 text-[10px] font-normal text-muted">
+            <span className="ml-2 text-[10px] font-normal text-muted-foreground">
               syncing...
             </span>
           )}
@@ -99,12 +99,12 @@ export default function Header({
                   return Array.from(grouped.values()).map((ws, i) => (
                     <div key={ws.workspaceId} className={i > 0 ? "mt-2" : ""}>
                       <div className="group/ws flex items-center justify-between px-3 py-1.5 hover:bg-gray-50 transition-colors">
-                        <span className="text-[10px] font-semibold uppercase tracking-wide text-muted">
+                        <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                           {ws.workspaceName}
                         </span>
                         <button
                           onClick={() => onDisconnect(ws.workspaceId)}
-                          className="flex h-5 w-5 items-center justify-center text-muted hover:text-red-600 transition-colors opacity-0 group-hover/ws:opacity-100"
+                          className="flex h-5 w-5 items-center justify-center text-muted-foreground hover:text-red-600 transition-colors opacity-0 group-hover/ws:opacity-100"
                           title="Disconnect workspace"
                         >
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -124,7 +124,7 @@ export default function Header({
                             onClick={(e) =>
                               handleRemoveList(list.workspaceId, list.listId, e)
                             }
-                            className="ml-2 shrink-0 flex h-5 w-5 items-center justify-center text-muted hover:text-red-600 transition-colors opacity-0 group-hover/item:opacity-100"
+                            className="ml-2 shrink-0 flex h-5 w-5 items-center justify-center text-muted-foreground hover:text-red-600 transition-colors opacity-0 group-hover/item:opacity-100"
                           >
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <polyline points="3 6 5 6 21 6" />
@@ -134,7 +134,7 @@ export default function Header({
                         </div>
                       ))}
                       {ws.lists.length === 0 && (
-                        <div className="px-3 py-1.5 text-xs text-muted italic">No lists</div>
+                        <div className="px-3 py-1.5 text-xs text-muted-foreground italic">No lists</div>
                       )}
                     </div>
                   ));

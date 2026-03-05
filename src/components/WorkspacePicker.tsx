@@ -39,7 +39,7 @@ export default function WorkspacePicker({
       {selected && (
         <button
           onClick={() => onDisconnect(selected)}
-          className="text-xs text-muted hover:text-foreground transition-colors"
+          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
           title="Disconnect workspace"
         >
           Disconnect

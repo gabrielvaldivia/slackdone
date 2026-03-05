@@ -99,7 +99,7 @@ export default function AddListModal({
         <h2 className="text-sm font-semibold mb-4">Add a Slack List</h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="rounded-md bg-gray-50 px-3 py-2 text-xs text-muted space-y-1">
+          <div className="rounded-md bg-gray-50 px-3 py-2 text-xs text-muted-foreground space-y-1">
             <p>To get a list link:</p>
             <ol className="list-decimal ml-4 space-y-0.5">
               <li>Open the list in Slack</li>
@@ -110,7 +110,7 @@ export default function AddListModal({
           </div>
 
           <div>
-            <label className="block text-xs text-muted mb-1">
+            <label className="block text-xs text-muted-foreground mb-1">
               Slack List URL or ID
             </label>
             <input

@@ -145,7 +145,7 @@ export default function Home() {
 
       {loading && !boardData && (
         <div className="flex flex-1 items-center justify-center">
-          <p className="text-sm text-muted">Loading...</p>
+          <p className="text-sm text-muted-foreground">Loading...</p>
         </div>
       )}
 

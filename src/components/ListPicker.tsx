@@ -101,7 +101,7 @@ export default function ListPicker({
               <span
                 onClick={(e) => handleRemove(list.listId, e)}
                 className={`ml-0.5 hidden group-hover:inline-flex items-center justify-center rounded-full w-3.5 h-3.5 text-[10px] leading-none hover:bg-red-500 hover:text-white ${
-                  selected === list.listId ? "text-background/60" : "text-muted"
+                  selected === list.listId ? "text-background/60" : "text-muted-foreground"
                 }`}
               >
                 ×
@@ -119,7 +119,7 @@ export default function ListPicker({
             setError("");
           }}
           placeholder={savedLists.length > 0 ? "Add list..." : "Paste Slack list URL or ID"}
-          className="rounded-md border border-border bg-white px-2 py-1 text-xs outline-none w-44 placeholder:text-muted focus:ring-2 focus:ring-blue-300"
+          className="rounded-md border border-border bg-white px-2 py-1 text-xs outline-none w-44 placeholder:text-muted-foreground focus:ring-2 focus:ring-blue-300"
         />
         <button
           type="submit"

@@ -2,6 +2,15 @@
 
 import { useState } from "react";
 import { BoardItemField, SchemaField } from "@/lib/types";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 interface FieldEditorProps {
   field: BoardItemField;
@@ -17,21 +26,24 @@ export default function FieldEditor({ field, schema, onUpdate }: FieldEditorProp
     const options = schema?.options || [];
     const currentValue = Array.isArray(field.value) ? field.value[0] : field.value;
     return (
-      <select
-        value={(currentValue as string) || ""}
-        onChange={(e) => {
-          const val = e.target.value;
-          onUpdate(val ? [val] : []);
+      <Select
+        value={(currentValue as string) || "_none_"}
+        onValueChange={(val) => {
+          onUpdate(val === "_none_" ? [] : [val]);
         }}
-        className="w-full rounded-md border border-border bg-white px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-300"
       >
-        <option value="">None</option>
-        {options.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
+        <SelectTrigger className="w-full">
+          <SelectValue placeholder="None" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="_none_">None</SelectItem>
+          {options.map((opt) => (
+            <SelectItem key={opt.value} value={opt.value}>
+              {opt.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     );
   }
 
@@ -39,14 +51,14 @@ export default function FieldEditor({ field, schema, onUpdate }: FieldEditorProp
   if (type === "people") {
     const people = field.value as string[] | undefined;
     if (!people || people.length === 0) {
-      return <span className="text-sm text-muted">No one assigned</span>;
+      return <span className="text-sm text-muted-foreground">No one assigned</span>;
     }
     return (
       <div className="flex flex-wrap gap-1.5">
         {people.map((userId) => (
           <span
             key={userId}
-            className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs text-gray-700"
+            className="inline-flex items-center rounded-full bg-secondary px-2.5 py-0.5 text-xs text-secondary-foreground"
           >
             {userId}
           </span>
@@ -58,11 +70,10 @@ export default function FieldEditor({ field, schema, onUpdate }: FieldEditorProp
   // Date
   if (type === "date") {
     return (
-      <input
+      <Input
         type="date"
         value={(field.value as string) || ""}
         onChange={(e) => onUpdate(e.target.value)}
-        className="w-full rounded-md border border-border bg-white px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-300"
       />
     );
   }
@@ -75,18 +86,17 @@ export default function FieldEditor({ field, schema, onUpdate }: FieldEditorProp
   // Number
   if (type === "number") {
     return (
-      <input
+      <Input
         type="number"
         value={field.displayValue || ""}
         onChange={(e) => onUpdate(e.target.value ? Number(e.target.value) : null)}
-        className="w-full rounded-md border border-border bg-white px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-300"
       />
     );
   }
 
   // Unknown / read-only fallback
   return (
-    <div className="rounded-md bg-gray-50 px-2 py-1.5 text-sm text-muted">
+    <div className="rounded-md bg-secondary px-3 py-2 text-sm text-muted-foreground">
       {field.displayValue || "—"}
     </div>
   );
@@ -102,13 +112,13 @@ function TextAreaField({ initialValue, onUpdate }: { initialValue: string; onUpd
   };
 
   return (
-    <textarea
+    <Textarea
       value={value}
       onChange={(e) => setValue(e.target.value)}
       onBlur={handleBlur}
       rows={3}
-      className="w-full rounded-md border border-border bg-white px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-300 resize-y"
       placeholder="Add notes..."
+      className="resize-y"
     />
   );
 }

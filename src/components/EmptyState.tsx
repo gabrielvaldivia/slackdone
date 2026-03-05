@@ -18,7 +18,7 @@ export default function EmptyState({
       <div className="flex flex-1 items-center justify-center">
         <div className="max-w-md space-y-4 text-center">
           <h2 className="text-lg font-medium">Setup Required</h2>
-          <div className="space-y-2 text-sm text-muted text-left">
+          <div className="space-y-2 text-sm text-muted-foreground text-left">
             <p>
               Add these environment variables (Vercel dashboard or{" "}
               <span className="font-mono text-xs">.env.local</span>):
@@ -41,7 +41,7 @@ NEXT_PUBLIC_BASE_URL=https://your-app.vercel.app`}
       <div className="flex flex-1 items-center justify-center">
         <div className="space-y-4 text-center">
           <h2 className="text-lg font-medium">No workspaces connected</h2>
-          <p className="text-sm text-muted">
+          <p className="text-sm text-muted-foreground">
             Connect a Slack workspace to get started.
           </p>
           <button
@@ -59,7 +59,7 @@ NEXT_PUBLIC_BASE_URL=https://your-app.vercel.app`}
     <div className="flex flex-1 items-center justify-center">
       <div className="space-y-4 text-center">
         <h2 className="text-lg font-medium">No lists added yet</h2>
-        <p className="text-sm text-muted">
+        <p className="text-sm text-muted-foreground">
           Add a Slack list to see your tasks on a unified board.
         </p>
         {onAddList && (

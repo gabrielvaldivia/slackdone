@@ -48,7 +48,7 @@ export default function AddCardForm({ onAdd, assigneeOptions = [], clientOptions
     return (
       <button
         onClick={open}
-        className="w-full py-1 text-xs text-muted hover:text-foreground transition-colors text-left"
+        className="w-full py-1 text-xs text-muted-foreground hover:text-foreground transition-colors text-left"
       >
         + Add item
       </button>
@@ -226,7 +226,7 @@ export default function AddCardForm({ onAdd, assigneeOptions = [], clientOptions
         <button
           type="button"
           onClick={reset}
-          className="rounded-md px-2 py-1 text-xs text-muted hover:text-foreground transition-colors"
+          className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
         >
           Cancel
         </button>
