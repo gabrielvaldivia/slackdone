@@ -580,10 +580,10 @@ export default function Board({ data, onRefresh }: BoardProps) {
                   resolvedIds.push(selectedId);
                 }
               }
-              // People columns use "people" key in cells
+              // People columns: try multiple formats since Slack docs are sparse
               cells.push({
                 column_id: peopleCol.id,
-                people: resolvedIds,
+                users: resolvedIds,
               });
             }
           }
