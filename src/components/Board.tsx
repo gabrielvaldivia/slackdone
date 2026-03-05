@@ -551,7 +551,8 @@ export default function Board({ data, onRefresh }: BoardProps) {
             }
           }
 
-          // Assignee
+          // Assignee — send each update individually since Slack
+          // has strict cell format requirements per column type
           const schema = listData.schema || [];
           if (assigneeIds.length > 0) {
             const peopleCol = schema.find(
@@ -579,9 +580,10 @@ export default function Board({ data, onRefresh }: BoardProps) {
                   resolvedIds.push(selectedId);
                 }
               }
+              // People columns use "people" key in cells
               cells.push({
                 column_id: peopleCol.id,
-                value: resolvedIds,
+                people: resolvedIds,
               });
             }
           }
@@ -610,23 +612,26 @@ export default function Board({ data, onRefresh }: BoardProps) {
         // proceed without extra fields
       }
 
-      // Update with status/assignee/client if any extra cells to set
-      if (cells.length > 0) {
-        const updateRes = await fetch(
-          `/api/lists/${targetList.listId}/items/${newItemId}`,
-          {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              workspaceId: targetList.workspaceId,
-              cells,
-            }),
+      // Update each cell individually so one failure doesn't block others
+      for (const cell of cells) {
+        try {
+          const updateRes = await fetch(
+            `/api/lists/${targetList.listId}/items/${newItemId}`,
+            {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                workspaceId: targetList.workspaceId,
+                cells: [cell],
+              }),
+            }
+          );
+          if (!updateRes.ok) {
+            const errData = await updateRes.json().catch(() => ({}));
+            console.error("Update cell failed:", cell.column_id, errData);
           }
-        );
-        if (!updateRes.ok) {
-          // Log but don't fail — item was created with title at least
-          const errData = await updateRes.json().catch(() => ({}));
-          console.error("Update after create failed:", errData);
+        } catch {
+          console.error("Update cell error:", cell.column_id);
         }
       }
 
