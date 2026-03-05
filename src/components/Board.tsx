@@ -969,7 +969,9 @@ export default function Board({ data, onRefresh }: BoardProps) {
           {/* Filter toggle */}
           <button
             onClick={() => setFiltersOpen((v) => !v)}
-            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+            className={`inline-flex items-center gap-1.5 rounded-full pl-3 py-1 text-xs font-medium transition-colors ${
+              hasActiveFilters && !filtersOpen ? "pr-1.5" : "pr-3"
+            } ${
               filtersOpen || hasActiveFilters
                 ? "bg-blue-100 text-blue-700"
                 : "bg-gray-100 text-gray-600 hover:bg-gray-200"
@@ -982,7 +984,7 @@ export default function Board({ data, onRefresh }: BoardProps) {
             </svg>
             Filter
             {hasActiveFilters && !filtersOpen && (
-              <span className="ml-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 text-[9px] text-white">
+              <span className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 text-[9px] text-white">
                 {filterAssignees.size + filterClients.size}
               </span>
             )}
