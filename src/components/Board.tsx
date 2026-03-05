@@ -501,95 +501,132 @@ export default function Board({ data, onRefresh }: BoardProps) {
     }
     if (!targetList) return;
 
-    const fields: Record<string, unknown> = { name: title };
-
-    // Fetch the list schema to resolve column IDs for status, assignee, and client
     try {
-      const res = await fetch(
-        `/api/lists/${targetList.listId}?workspaceId=${targetList.workspaceId}`
-      );
-      if (res.ok) {
-        const listData = await res.json();
-
-        // Status field — use column key (not ID) for items.create
-        if (targetList.statusColumnKey && columnId !== "__none__" && columnId !== "no status") {
-          if (listData.statusColumn?.options) {
-            for (const opt of listData.statusColumn.options) {
-              if (opt.name.toLowerCase().trim() === columnId) {
-                fields[targetList.statusColumnKey] = [opt.id];
-                break;
-              }
-            }
-          }
-        }
-
-        // Assignee field — find first people/user column in schema
-        const schema = listData.schema || [];
-        if (assigneeIds.length > 0) {
-          const peopleCol = schema.find(
-            (c: { type: string }) => c.type === "people" || c.type === "user"
-          );
-          if (peopleCol) {
-            // Build a set of all user IDs that belong to the target workspace
-            const workspaceUserIds = new Set<string>();
-            for (const col of columns) {
-              for (const item of col.items) {
-                if (item.sourceWorkspaceId === targetList.workspaceId) {
-                  for (const a of item.assignees || []) {
-                    workspaceUserIds.add(a.id);
-                  }
-                }
-              }
-            }
-
-            // For each selected assignee, pick the user ID that exists in this workspace
-            const resolvedIds: string[] = [];
-            for (const selectedId of assigneeIds) {
-              const opt = assigneeOptions.find((o) => o.id === selectedId);
-              if (opt?.ids) {
-                const match = opt.ids.find((uid) => workspaceUserIds.has(uid));
-                if (match) resolvedIds.push(match);
-                else resolvedIds.push(selectedId); // fallback
-              } else {
-                resolvedIds.push(selectedId);
-              }
-            }
-            fields[peopleCol.key] = resolvedIds;
-          }
-        }
-
-        // Client field — find select column labeled "client" in schema
-        if (clientId) {
-          const clientCol = schema.find(
-            (c: { type: string; label: string }) =>
-              (c.type === "select" || c.type === "status") &&
-              c.label.toLowerCase() === "client"
-          );
-          if (clientCol?.options) {
-            const match = clientCol.options.find(
-              (o: { label: string }) => o.label === clientId
-            );
-            if (match) {
-              fields[clientCol.key] = [match.value];
-            }
-          }
-        }
-      }
-    } catch {
-      // ignore, create with what we have
-    }
-
-    try {
-      const res = await fetch(`/api/lists/${targetList.listId}/items`, {
+      // Step 1: Create the item (Slack returns the new item with its ID)
+      const createRes = await fetch(`/api/lists/${targetList.listId}/items`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           workspaceId: targetList.workspaceId,
-          fields,
+          fields: {},
         }),
       });
+      if (!createRes.ok) throw new Error("Create failed");
+      const created = await createRes.json();
+      const newItemId = created.item?.id;
+      if (!newItemId) throw new Error("No item ID returned");
 
-      if (!res.ok) throw new Error("Create failed");
+      // Step 2: Build cells to set title, status, assignees, client via update
+      // (the cells/update format is reliable — used by drag-drop and rename)
+      const cells: Array<Record<string, unknown>> = [];
+
+      // Title — rich_text format
+      cells.push({
+        column_id: "name",
+        value: JSON.stringify([
+          {
+            type: "rich_text_section",
+            elements: [{ type: "text", text: title }],
+          },
+        ]),
+      });
+
+      // Fetch schema to resolve column IDs for status, assignee, client
+      try {
+        const schemaRes = await fetch(
+          `/api/lists/${targetList.listId}?workspaceId=${targetList.workspaceId}`
+        );
+        if (schemaRes.ok) {
+          const listData = await schemaRes.json();
+
+          // Status
+          if (targetList.statusColumnId && columnId !== "__none__" && columnId !== "no status") {
+            if (listData.statusColumn?.options) {
+              for (const opt of listData.statusColumn.options) {
+                if (opt.name.toLowerCase().trim() === columnId) {
+                  cells.push({
+                    column_id: targetList.statusColumnId,
+                    select: [opt.id],
+                  });
+                  break;
+                }
+              }
+            }
+          }
+
+          // Assignee
+          const schema = listData.schema || [];
+          if (assigneeIds.length > 0) {
+            const peopleCol = schema.find(
+              (c: { type: string }) => c.type === "people" || c.type === "user"
+            );
+            if (peopleCol) {
+              const workspaceUserIds = new Set<string>();
+              for (const col of columns) {
+                for (const item of col.items) {
+                  if (item.sourceWorkspaceId === targetList.workspaceId) {
+                    for (const a of item.assignees || []) {
+                      workspaceUserIds.add(a.id);
+                    }
+                  }
+                }
+              }
+              const resolvedIds: string[] = [];
+              for (const selectedId of assigneeIds) {
+                const opt = assigneeOptions.find((o) => o.id === selectedId);
+                if (opt?.ids) {
+                  const match = opt.ids.find((uid) => workspaceUserIds.has(uid));
+                  if (match) resolvedIds.push(match);
+                  else resolvedIds.push(selectedId);
+                } else {
+                  resolvedIds.push(selectedId);
+                }
+              }
+              cells.push({
+                column_id: peopleCol.id,
+                people: resolvedIds,
+              });
+            }
+          }
+
+          // Client
+          if (clientId) {
+            const clientCol = schema.find(
+              (c: { type: string; label: string }) =>
+                (c.type === "select" || c.type === "status") &&
+                c.label.toLowerCase() === "client"
+            );
+            if (clientCol?.options) {
+              const match = clientCol.options.find(
+                (o: { label: string }) => o.label === clientId
+              );
+              if (match) {
+                cells.push({
+                  column_id: clientCol.id,
+                  select: [match.value],
+                });
+              }
+            }
+          }
+        }
+      } catch {
+        // proceed with title-only update
+      }
+
+      // Step 3: Update the newly created item with all fields
+      const updateRes = await fetch(
+        `/api/lists/${targetList.listId}/items/${newItemId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            workspaceId: targetList.workspaceId,
+            cells,
+          }),
+        }
+      );
+      if (!updateRes.ok) throw new Error("Update failed");
+
       onRefresh();
     } catch {
       setError("Failed to create item.");
