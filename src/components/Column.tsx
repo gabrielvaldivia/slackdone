@@ -31,12 +31,18 @@ interface ColumnProps {
   clientColorMap?: Map<string, { bg: string; text: string }>;
   assigneeOptions?: FilterOption[];
   clientOptions?: FilterOption[];
+  onColumnDragStart?: () => void;
+  onColumnDragEnd?: () => void;
+  onColumnDrop?: () => void;
+  isColumnDragging?: boolean;
 }
 
-export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDeleteItem, onRenameItem, onCardClick, onHide, collapsed, onUnhide, clientColorMap, assigneeOptions, clientOptions }: ColumnProps) {
+export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDeleteItem, onRenameItem, onCardClick, onHide, collapsed, onUnhide, clientColorMap, assigneeOptions, clientOptions, onColumnDragStart, onColumnDragEnd, onColumnDrop, isColumnDragging }: ColumnProps) {
   const [dragOver, setDragOver] = useState(false);
+  const [columnDragOver, setColumnDragOver] = useState(false);
   const [dropIndex, setDropIndex] = useState<number | null>(null);
   const dragCounter = useRef(0);
+  const colDragCounter = useRef(0);
   const listRef = useRef<HTMLDivElement>(null);
   const colors = COLUMN_COLORS[colorIndex % COLUMN_COLORS.length];
 
@@ -79,40 +85,70 @@ export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDe
     <div
       className={`group/col flex w-72 shrink-0 flex-col rounded-xl transition-colors ${
         dragOver ? "ring-2 ring-blue-300" : ""
-      }`}
+      } ${columnDragOver ? "ring-2 ring-purple-300" : ""} ${isColumnDragging ? "opacity-50" : ""}`}
       style={{ backgroundColor: colors.bg }}
       onDragEnter={(e) => {
         e.preventDefault();
-        dragCounter.current++;
-        setDragOver(true);
+        const types = e.dataTransfer.types;
+        if (types.includes("application/column-drag")) {
+          colDragCounter.current++;
+          setColumnDragOver(true);
+        } else {
+          dragCounter.current++;
+          setDragOver(true);
+        }
       }}
       onDragOver={(e) => {
         e.preventDefault();
         e.dataTransfer.dropEffect = "move";
-        setDropIndex(calcDropIndex(e.clientY));
+        if (!e.dataTransfer.types.includes("application/column-drag")) {
+          setDropIndex(calcDropIndex(e.clientY));
+        }
       }}
-      onDragLeave={() => {
-        dragCounter.current--;
-        if (dragCounter.current === 0) {
-          setDragOver(false);
-          setDropIndex(null);
+      onDragLeave={(e) => {
+        if (e.dataTransfer.types.includes("application/column-drag")) {
+          colDragCounter.current--;
+          if (colDragCounter.current === 0) setColumnDragOver(false);
+        } else {
+          dragCounter.current--;
+          if (dragCounter.current === 0) {
+            setDragOver(false);
+            setDropIndex(null);
+          }
         }
       }}
       onDrop={(e) => {
         e.preventDefault();
-        dragCounter.current = 0;
-        setDragOver(false);
-        const currentDropIndex = dropIndex;
-        setDropIndex(null);
-        try {
-          const data = JSON.parse(e.dataTransfer.getData("text/plain"));
-          onDrop(data.itemId, data.sourceColumnId, column.id, currentDropIndex ?? undefined);
-        } catch {
-          // ignore invalid drag data
+        if (e.dataTransfer.types.includes("application/column-drag")) {
+          colDragCounter.current = 0;
+          setColumnDragOver(false);
+          onColumnDrop?.();
+        } else {
+          dragCounter.current = 0;
+          setDragOver(false);
+          const currentDropIndex = dropIndex;
+          setDropIndex(null);
+          try {
+            const data = JSON.parse(e.dataTransfer.getData("text/plain"));
+            onDrop(data.itemId, data.sourceColumnId, column.id, currentDropIndex ?? undefined);
+          } catch {
+            // ignore invalid drag data
+          }
         }
       }}
     >
-      <div className="flex items-center justify-between px-3 py-3">
+      <div
+        className="flex items-center justify-between px-3 py-3 cursor-grab active:cursor-grabbing"
+        draggable
+        onDragStart={(e) => {
+          e.dataTransfer.setData("application/column-drag", column.id);
+          e.dataTransfer.effectAllowed = "move";
+          onColumnDragStart?.();
+        }}
+        onDragEnd={() => {
+          onColumnDragEnd?.();
+        }}
+      >
         <span
           className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-white"
           style={{ backgroundColor: colors.header }}

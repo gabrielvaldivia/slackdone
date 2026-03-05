@@ -13,6 +13,7 @@ interface BoardProps {
 }
 
 const HIDDEN_KEY = "slackdone:hiddenColumns";
+const ORDER_KEY = "slackdone:columnOrder";
 
 function loadHidden(): Set<string> {
   if (typeof window === "undefined") return new Set();
@@ -28,18 +29,54 @@ function saveHidden(ids: Set<string>) {
   localStorage.setItem(HIDDEN_KEY, JSON.stringify([...ids]));
 }
 
+function loadColumnOrder(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(ORDER_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveColumnOrder(ids: string[]) {
+  localStorage.setItem(ORDER_KEY, JSON.stringify(ids));
+}
+
+function applyColumnOrder(columns: BoardColumnType[], savedOrder: string[]): BoardColumnType[] {
+  if (savedOrder.length === 0) return columns;
+  const colMap = new Map(columns.map((c) => [c.id, c]));
+  const ordered: BoardColumnType[] = [];
+  for (const id of savedOrder) {
+    const col = colMap.get(id);
+    if (col) {
+      ordered.push(col);
+      colMap.delete(id);
+    }
+  }
+  // Append any new columns not in the saved order
+  for (const col of colMap.values()) {
+    ordered.push(col);
+  }
+  return ordered;
+}
+
 export default function Board({ data, onRefresh }: BoardProps) {
-  const [columns, setColumns] = useState<BoardColumnType[]>(data.columns);
+  const [columnOrder, setColumnOrder] = useState<string[]>(loadColumnOrder);
+  const [columns, setColumns] = useState<BoardColumnType[]>(() =>
+    applyColumnOrder(data.columns, loadColumnOrder())
+  );
   const [error, setError] = useState("");
   const [selectedItem, setSelectedItem] = useState<BoardItem | null>(null);
   const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(loadHidden);
   const [showHidden, setShowHidden] = useState(false);
   const [filterAssignees, setFilterAssignees] = useState<Set<string>>(new Set());
   const [filterClients, setFilterClients] = useState<Set<string>>(new Set());
+  const [draggingColumnId, setDraggingColumnId] = useState<string | null>(null);
 
   useEffect(() => {
-    setColumns(data.columns);
-  }, [data]);
+    setColumns(applyColumnOrder(data.columns, columnOrder));
+  }, [data]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Build a map of client name -> unique color, assigned by sorted order
   const clientColorMap = useMemo(() => {
@@ -641,6 +678,31 @@ export default function Board({ data, onRefresh }: BoardProps) {
     }
   };
 
+  const handleColumnDragStart = (columnId: string) => {
+    setDraggingColumnId(columnId);
+  };
+
+  const handleColumnDragEnd = () => {
+    setDraggingColumnId(null);
+  };
+
+  const handleColumnDrop = (targetColumnId: string) => {
+    if (!draggingColumnId || draggingColumnId === targetColumnId) return;
+    setColumns((prev) => {
+      const next = [...prev];
+      const fromIdx = next.findIndex((c) => c.id === draggingColumnId);
+      const toIdx = next.findIndex((c) => c.id === targetColumnId);
+      if (fromIdx < 0 || toIdx < 0) return prev;
+      const [moved] = next.splice(fromIdx, 1);
+      next.splice(toIdx, 0, moved);
+      const newOrder = next.map((c) => c.id);
+      setColumnOrder(newOrder);
+      saveColumnOrder(newOrder);
+      return next;
+    });
+    setDraggingColumnId(null);
+  };
+
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       {error && (
@@ -702,6 +764,10 @@ export default function Board({ data, onRefresh }: BoardProps) {
               clientColorMap={clientColorMap}
               assigneeOptions={assigneeOptions}
               clientOptions={clientOptions}
+              onColumnDragStart={() => handleColumnDragStart(column.id)}
+              onColumnDragEnd={handleColumnDragEnd}
+              onColumnDrop={() => handleColumnDrop(column.id)}
+              isColumnDragging={draggingColumnId === column.id}
             />
           );
         })}
