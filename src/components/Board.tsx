@@ -502,20 +502,13 @@ export default function Board({ data, onRefresh }: BoardProps) {
     if (!targetList) return;
 
     try {
-      // Create the item with title in rich_text format
-      const nameValue = JSON.stringify([
-        {
-          type: "rich_text_section",
-          elements: [{ type: "text", text: title }],
-        },
-      ]);
-
+      // Create the item (Slack ignores fields formats we've tried, so create blank)
       const createRes = await fetch(`/api/lists/${targetList.listId}/items`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           workspaceId: targetList.workspaceId,
-          fields: { name: nameValue },
+          fields: {},
         }),
       });
       if (!createRes.ok) throw new Error("Create failed");
@@ -526,8 +519,19 @@ export default function Board({ data, onRefresh }: BoardProps) {
         return;
       }
 
-      // Build update cells for status, assignees, client
+      // Build update cells — title via PATCH works (same as rename)
       const cells: Array<Record<string, unknown>> = [];
+
+      // Title — rich_text format (proven to work in rename)
+      cells.push({
+        column_id: "name",
+        value: JSON.stringify([
+          {
+            type: "rich_text_section",
+            elements: [{ type: "text", text: title }],
+          },
+        ]),
+      });
 
       try {
         const schemaRes = await fetch(
@@ -551,44 +555,8 @@ export default function Board({ data, onRefresh }: BoardProps) {
             }
           }
 
-          // Assignee — send each update individually since Slack
-          // has strict cell format requirements per column type
-          const schema = listData.schema || [];
-          if (assigneeIds.length > 0) {
-            const peopleCol = schema.find(
-              (c: { type: string }) => c.type === "people" || c.type === "user"
-            );
-            if (peopleCol) {
-              const workspaceUserIds = new Set<string>();
-              for (const col of columns) {
-                for (const item of col.items) {
-                  if (item.sourceWorkspaceId === targetList.workspaceId) {
-                    for (const a of item.assignees || []) {
-                      workspaceUserIds.add(a.id);
-                    }
-                  }
-                }
-              }
-              const resolvedIds: string[] = [];
-              for (const selectedId of assigneeIds) {
-                const opt = assigneeOptions.find((o) => o.id === selectedId);
-                if (opt?.ids) {
-                  const match = opt.ids.find((uid) => workspaceUserIds.has(uid));
-                  if (match) resolvedIds.push(match);
-                  else resolvedIds.push(selectedId);
-                } else {
-                  resolvedIds.push(selectedId);
-                }
-              }
-              // People columns: try multiple formats since Slack docs are sparse
-              cells.push({
-                column_id: peopleCol.id,
-                users: resolvedIds,
-              });
-            }
-          }
-
           // Client
+          const schema = listData.schema || [];
           if (clientId) {
             const clientCol = schema.find(
               (c: { type: string; label: string }) =>
