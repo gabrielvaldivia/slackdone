@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BoardColumn as BoardColumnType, BoardItem } from "@/lib/types";
 import Card from "./Card";
 import AddCardForm from "./AddCardForm";
@@ -26,7 +26,9 @@ interface ColumnProps {
   onRenameItem: (itemId: string, newTitle: string) => void;
   onCardClick?: (item: BoardItem) => void;
   onHide?: () => void;
-  collapsed?: boolean;
+  onMinimize?: () => void;
+  onExpand?: () => void;
+  minimized?: boolean;
   onUnhide?: () => void;
   clientColorMap?: Map<string, { bg: string; text: string }>;
   assigneeOptions?: FilterOption[];
@@ -37,14 +39,27 @@ interface ColumnProps {
   isColumnDragging?: boolean;
 }
 
-export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDeleteItem, onRenameItem, onCardClick, onHide, collapsed, onUnhide, clientColorMap, assigneeOptions, clientOptions, onColumnDragStart, onColumnDragEnd, onColumnDrop, isColumnDragging }: ColumnProps) {
+export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDeleteItem, onRenameItem, onCardClick, onHide, onMinimize, onExpand, minimized, onUnhide, clientColorMap, assigneeOptions, clientOptions, onColumnDragStart, onColumnDragEnd, onColumnDrop, isColumnDragging }: ColumnProps) {
   const [dragOver, setDragOver] = useState(false);
   const [columnDragOver, setColumnDragOver] = useState(false);
   const [dropIndex, setDropIndex] = useState<number | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
   const dragCounter = useRef(0);
   const colDragCounter = useRef(0);
   const listRef = useRef<HTMLDivElement>(null);
   const colors = COLUMN_COLORS[colorIndex % COLUMN_COLORS.length];
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [menuOpen]);
 
   const calcDropIndex = (clientY: number): number => {
     if (!listRef.current) return column.items.length;
@@ -57,13 +72,16 @@ export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDe
     return cards.length;
   };
 
-  if (collapsed) {
+  if (minimized) {
     return (
       <div
         className="flex w-16 shrink-0 flex-col items-center rounded-xl py-3 gap-2 cursor-pointer group"
         style={{ backgroundColor: colors.bg }}
-        onClick={onUnhide}
-        title="Click to unhide"
+        onClick={() => {
+          if (onUnhide) onUnhide();
+          else if (onExpand) onExpand();
+        }}
+        title={onUnhide ? "Click to unhide" : "Click to expand"}
       >
         <span
           className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold text-white"
@@ -156,18 +174,51 @@ export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDe
           {column.name}
           <span className="text-white/70">{column.items.length}</span>
         </span>
-        {onHide && (
-          <button
-            onClick={onHide}
-            className="rounded p-1 text-gray-400 opacity-0 transition-opacity hover:text-gray-600 group-hover/col:opacity-100"
-            title="Hide column"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
-              <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
-              <line x1="1" y1="1" x2="23" y2="23" />
-            </svg>
-          </button>
+        {(onHide || onMinimize) && (
+          <div className="relative" ref={menuRef}>
+            <button
+              onClick={() => setMenuOpen((v) => !v)}
+              className="rounded p-1 text-gray-400 opacity-0 transition-opacity hover:text-gray-600 group-hover/col:opacity-100"
+              title="Column options"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="12" cy="5" r="2" />
+                <circle cx="12" cy="12" r="2" />
+                <circle cx="12" cy="19" r="2" />
+              </svg>
+            </button>
+            {menuOpen && (
+              <div className="absolute right-0 top-8 z-50 min-w-[140px] rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                {onMinimize && (
+                  <button
+                    onClick={() => { onMinimize(); setMenuOpen(false); }}
+                    className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-100"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="4 14 10 14 10 20" />
+                      <polyline points="20 10 14 10 14 4" />
+                      <line x1="14" y1="10" x2="21" y2="3" />
+                      <line x1="3" y1="21" x2="10" y2="14" />
+                    </svg>
+                    Minimize
+                  </button>
+                )}
+                {onHide && (
+                  <button
+                    onClick={() => { onHide(); setMenuOpen(false); }}
+                    className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-100"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+                      <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+                      <line x1="1" y1="1" x2="23" y2="23" />
+                    </svg>
+                    Hide
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         )}
       </div>
 

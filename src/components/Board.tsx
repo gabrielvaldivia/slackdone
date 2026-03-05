@@ -13,6 +13,7 @@ interface BoardProps {
 }
 
 const HIDDEN_KEY = "slackdone:hiddenColumns";
+const MINIMIZED_KEY = "slackdone:minimizedColumns";
 const ORDER_KEY = "slackdone:columnOrder";
 
 function loadHidden(): Set<string> {
@@ -27,6 +28,20 @@ function loadHidden(): Set<string> {
 
 function saveHidden(ids: Set<string>) {
   localStorage.setItem(HIDDEN_KEY, JSON.stringify([...ids]));
+}
+
+function loadMinimized(): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const raw = localStorage.getItem(MINIMIZED_KEY);
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function saveMinimized(ids: Set<string>) {
+  localStorage.setItem(MINIMIZED_KEY, JSON.stringify([...ids]));
 }
 
 function loadColumnOrder(): string[] {
@@ -69,6 +84,7 @@ export default function Board({ data, onRefresh }: BoardProps) {
   const [error, setError] = useState("");
   const [selectedItem, setSelectedItem] = useState<BoardItem | null>(null);
   const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(loadHidden);
+  const [minimizedColumns, setMinimizedColumns] = useState<Set<string>>(loadMinimized);
   const [showHidden, setShowHidden] = useState(false);
   const [filterAssignees, setFilterAssignees] = useState<Set<string>>(new Set());
   const [filterClients, setFilterClients] = useState<Set<string>>(new Set());
@@ -186,6 +202,24 @@ export default function Board({ data, onRefresh }: BoardProps) {
       const next = new Set(prev);
       next.delete(id);
       saveHidden(next);
+      return next;
+    });
+  };
+
+  const minimizeColumn = (id: string) => {
+    setMinimizedColumns((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      saveMinimized(next);
+      return next;
+    });
+  };
+
+  const expandColumn = (id: string) => {
+    setMinimizedColumns((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      saveMinimized(next);
       return next;
     });
   };
@@ -750,6 +784,7 @@ export default function Board({ data, onRefresh }: BoardProps) {
       <div className="flex flex-1 gap-4 overflow-x-auto p-4">
         {visibleColumns.map((column) => {
           const originalIndex = columns.findIndex((c) => c.id === column.id);
+          const isMinimized = minimizedColumns.has(column.id);
           return (
             <Column
               key={column.id}
@@ -761,6 +796,9 @@ export default function Board({ data, onRefresh }: BoardProps) {
               onRenameItem={handleRenameItem}
               onCardClick={setSelectedItem}
               onHide={() => hideColumn(column.id)}
+              onMinimize={() => minimizeColumn(column.id)}
+              onExpand={() => expandColumn(column.id)}
+              minimized={isMinimized}
               clientColorMap={clientColorMap}
               assigneeOptions={assigneeOptions}
               clientOptions={clientOptions}
@@ -784,7 +822,7 @@ export default function Board({ data, onRefresh }: BoardProps) {
               onRenameItem={handleRenameItem}
               onCardClick={setSelectedItem}
               clientColorMap={clientColorMap}
-              collapsed
+              minimized
               onUnhide={() => unhideColumn(column.id)}
               assigneeOptions={assigneeOptions}
               clientOptions={clientOptions}
