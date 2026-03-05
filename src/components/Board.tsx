@@ -289,9 +289,15 @@ export default function Board({ data, onRefresh }: BoardProps) {
   }, [viewName, filterAssignees, filterClients, savedViews]);
 
   const handleLoadView = (view: SavedView) => {
-    setFilterAssignees(new Set(view.assignees));
-    setFilterClients(new Set(view.clients));
-    setActiveViewId(view.id);
+    if (activeViewId === view.id) {
+      setFilterAssignees(new Set());
+      setFilterClients(new Set());
+      setActiveViewId(null);
+    } else {
+      setFilterAssignees(new Set(view.assignees));
+      setFilterClients(new Set(view.clients));
+      setActiveViewId(view.id);
+    }
   };
 
   const handleDeleteView = (id: string) => {
