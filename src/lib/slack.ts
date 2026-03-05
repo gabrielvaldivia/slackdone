@@ -49,11 +49,11 @@ export async function getListItemInfo(
 export async function createListItem(
   token: string,
   listId: string,
-  fields: Record<string, unknown>
+  initialFields: Array<Record<string, unknown>>
 ) {
   const data = await slackFetch("slackLists.items.create", token, {
     list_id: listId,
-    item: { fields },
+    initial_fields: initialFields,
   });
   return data;
 }

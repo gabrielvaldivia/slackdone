@@ -501,11 +501,13 @@ export default function Board({ data, onRefresh }: BoardProps) {
     }
     if (!targetList) return;
 
-    // items.create fields use column KEYS (not IDs) as property names.
-    // Format: { "name": "title", "ColXXXkey": ["optId"], "ColYYYkey": ["userId"] }
-    const fields: Record<string, unknown> = { name: title };
+    // Slack items.create uses initial_fields: an array of objects,
+    // each with column_id + type-specific key (rich_text, select, user, date).
+    // Ref: https://docs.slack.dev/reference/methods/slackLists.items.create/
+    const initialFields: Array<Record<string, unknown>> = [];
 
-    // Fetch the list schema to resolve column keys for status, assignee, and client
+    // Fetch the list schema to resolve column IDs
+    let nameColId: string | null = null;
     try {
       const res = await fetch(
         `/api/lists/${targetList.listId}?workspaceId=${targetList.workspaceId}`
@@ -514,19 +516,26 @@ export default function Board({ data, onRefresh }: BoardProps) {
         const listData = await res.json();
         const schema = listData.schema || [];
 
-        // Status field — use statusColumnKey, value as array
-        if (targetList.statusColumnKey && columnId !== "__none__" && columnId !== "no status") {
+        // Title — rich_text format
+        const nameCol = schema.find((c: { key: string }) => c.key === "name");
+        nameColId = nameCol?.id || null;
+
+        // Status
+        if (targetList.statusColumnId && columnId !== "__none__" && columnId !== "no status") {
           if (listData.statusColumn?.options) {
             for (const opt of listData.statusColumn.options) {
-              if (opt.name.toLowerCase().trim() === columnId) {
-                fields[targetList.statusColumnKey] = [opt.id];
+              if (opt.id === columnId) {
+                initialFields.push({
+                  column_id: targetList.statusColumnId,
+                  select: [opt.id],
+                });
                 break;
               }
             }
           }
         }
 
-        // Assignee field — find people/user column, use its KEY
+        // Assignee
         if (assigneeIds.length > 0) {
           const peopleCol = schema.find(
             (c: { type: string }) => c.type === "people" || c.type === "user"
@@ -554,11 +563,14 @@ export default function Board({ data, onRefresh }: BoardProps) {
                 resolvedIds.push(selectedId);
               }
             }
-            fields[peopleCol.key] = resolvedIds;
+            initialFields.push({
+              column_id: peopleCol.id,
+              user: resolvedIds,
+            });
           }
         }
 
-        // Client field — find select column labeled "client", use its KEY
+        // Client
         if (clientId) {
           const clientCol = schema.find(
             (c: { type: string; label: string }) =>
@@ -570,16 +582,35 @@ export default function Board({ data, onRefresh }: BoardProps) {
               (o: { label: string }) => o.label === clientId
             );
             if (match) {
-              fields[clientCol.key] = [match.value];
+              initialFields.push({
+                column_id: clientCol.id,
+                select: [match.value],
+              });
             }
           }
         }
       }
     } catch {
-      // ignore, create with what we have
+      // proceed with title only
     }
 
-    console.log("Creating item with fields:", JSON.stringify(fields));
+    // Title — always add, use column ID if found, fall back to "name"
+    initialFields.unshift({
+      column_id: nameColId || "name",
+      rich_text: [
+        {
+          type: "rich_text",
+          elements: [
+            {
+              type: "rich_text_section",
+              elements: [{ type: "text", text: title }],
+            },
+          ],
+        },
+      ],
+    });
+
+    console.log("Creating item with initial_fields:", JSON.stringify(initialFields));
 
     try {
       const res = await fetch(`/api/lists/${targetList.listId}/items`, {
@@ -587,7 +618,7 @@ export default function Board({ data, onRefresh }: BoardProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           workspaceId: targetList.workspaceId,
-          fields,
+          initialFields,
         }),
       });
 
