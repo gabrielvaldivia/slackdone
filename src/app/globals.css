@@ -8,21 +8,21 @@
 
   /* Column colors */
   --col-0: #6366f1; /* indigo */
-  --col-0-bg: #eef2ff;
+  --col-0-bg: rgba(99, 102, 241, 0.1);
   --col-1: #8b5cf6; /* violet */
-  --col-1-bg: #f5f3ff;
+  --col-1-bg: rgba(139, 92, 246, 0.1);
   --col-2: #ec4899; /* pink */
-  --col-2-bg: #fdf2f8;
+  --col-2-bg: rgba(236, 72, 153, 0.1);
   --col-3: #f59e0b; /* amber */
-  --col-3-bg: #fffbeb;
+  --col-3-bg: rgba(245, 158, 11, 0.1);
   --col-4: #10b981; /* emerald */
-  --col-4-bg: #ecfdf5;
+  --col-4-bg: rgba(16, 185, 129, 0.1);
   --col-5: #3b82f6; /* blue */
-  --col-5-bg: #eff6ff;
+  --col-5-bg: rgba(59, 130, 246, 0.1);
   --col-6: #ef4444; /* red */
-  --col-6-bg: #fef2f2;
+  --col-6-bg: rgba(239, 68, 68, 0.1);
   --col-7: #14b8a6; /* teal */
-  --col-7-bg: #f0fdfa;
+  --col-7-bg: rgba(20, 184, 166, 0.1);
 }
 
 @theme inline {
