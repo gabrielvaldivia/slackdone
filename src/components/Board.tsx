@@ -501,9 +501,9 @@ export default function Board({ data, onRefresh }: BoardProps) {
     }
     if (!targetList) return;
 
-    const fields: Record<string, unknown> = { title };
+    const fields: Record<string, unknown> = {};
 
-    // Fetch the list schema to resolve column IDs for status, assignee, and client
+    // Fetch the list schema to resolve column IDs for all fields
     try {
       const res = await fetch(
         `/api/lists/${targetList.listId}?workspaceId=${targetList.workspaceId}`
@@ -511,6 +511,12 @@ export default function Board({ data, onRefresh }: BoardProps) {
       if (res.ok) {
         const listData = await res.json();
         const schema = listData.schema || [];
+
+        // Title — find the name column's ID from schema
+        const nameCol = schema.find((c: { key: string }) => c.key === "name");
+        if (nameCol) {
+          fields[nameCol.id] = title;
+        }
 
         // Status field
         if (targetList.statusColumnId && columnId !== "__none__" && columnId !== "no status") {
