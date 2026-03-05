@@ -646,7 +646,12 @@ export default function Board({ data, onRefresh }: BoardProps) {
 
     try {
       const cell: Record<string, unknown> = { column_id: columnId };
-      if (Array.isArray(value)) {
+      // Determine the field type to use the right cell key
+      const fieldDef = targetItem.fields?.find((f) => f.columnId === columnId);
+      const fieldType = fieldDef?.type;
+      if (fieldType === "people" && Array.isArray(value)) {
+        cell.user = value;
+      } else if (Array.isArray(value)) {
         cell.select = value;
       } else if (typeof value === "string") {
         cell.value = value;
@@ -670,6 +675,69 @@ export default function Board({ data, onRefresh }: BoardProps) {
     } catch {
       onRefresh();
       setError("Failed to update field.");
+      setTimeout(() => setError(""), 3000);
+    }
+  };
+
+  const handleUpdateAssignees = async (itemId: string, userIds: string[]) => {
+    let targetItem: BoardItem | undefined;
+    for (const col of columns) {
+      targetItem = col.items.find((i) => i.id === itemId);
+      if (targetItem) break;
+    }
+    if (!targetItem) return;
+
+    const peopleField = targetItem.fields?.find((f) => f.type === "people");
+    if (!peopleField) return;
+
+    // Build updated assignees from the known assignee options
+    const updatedAssignees = userIds.map((uid) => {
+      const existing = targetItem!.assignees?.find((a) => a.id === uid);
+      if (existing) return existing;
+      const opt = assigneeOptions.find((o) => o.id === uid || o.ids?.includes(uid));
+      return {
+        id: uid,
+        name: opt?.name || uid,
+        displayName: opt?.name || uid,
+        avatar: opt?.avatar || "",
+      };
+    });
+
+    // Optimistic update
+    setColumns((prev) =>
+      prev.map((col) => ({
+        ...col,
+        items: col.items.map((item) => {
+          if (item.id !== itemId) return item;
+          return {
+            ...item,
+            assignees: updatedAssignees,
+            fields: item.fields?.map((f) =>
+              f.columnId === peopleField.columnId
+                ? { ...f, value: userIds, displayValue: updatedAssignees.map((a) => a.displayName).join(", ") }
+                : f
+            ),
+          };
+        }),
+      }))
+    );
+
+    try {
+      const res = await fetch(
+        `/api/lists/${targetItem.sourceListId}/items/${itemId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            workspaceId: targetItem.sourceWorkspaceId,
+            cells: [{ column_id: peopleField.columnId, user: userIds }],
+          }),
+        }
+      );
+      if (!res.ok) throw new Error("Update assignees failed");
+    } catch {
+      onRefresh();
+      setError("Failed to update assignees.");
       setTimeout(() => setError(""), 3000);
     }
   };
@@ -1083,6 +1151,16 @@ export default function Board({ data, onRefresh }: BoardProps) {
           onRename={(newTitle) => handleRenameItem(selectedItem.id, newTitle)}
           onUpdateField={(columnId, value) =>
             handleUpdateField(selectedItem.id, columnId, value)
+          }
+          onDelete={() => {
+            const col = columns.find((c) =>
+              c.items.some((i) => i.id === selectedItem.id)
+            );
+            if (col) handleDeleteItem(selectedItem.id, col.id);
+          }}
+          assigneeOptions={assigneeOptions}
+          onUpdateAssignees={(userIds) =>
+            handleUpdateAssignees(selectedItem.id, userIds)
           }
         />
       )}

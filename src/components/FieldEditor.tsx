@@ -1,6 +1,7 @@
 "use client";
 
-import { BoardItemField, SchemaField, UserProfile } from "@/lib/types";
+import { useState } from "react";
+import { BoardItemField, SchemaField } from "@/lib/types";
 
 interface FieldEditorProps {
   field: BoardItemField;
@@ -68,14 +69,7 @@ export default function FieldEditor({ field, schema, onUpdate }: FieldEditorProp
 
   // Text / Rich text
   if (type === "text" || type === "rich_text") {
-    return (
-      <input
-        type="text"
-        value={field.displayValue || ""}
-        onChange={(e) => onUpdate(e.target.value)}
-        className="w-full rounded-md border border-border bg-white px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-300"
-      />
-    );
+    return <TextAreaField initialValue={field.displayValue || ""} onUpdate={onUpdate} />;
   }
 
   // Number
@@ -95,5 +89,26 @@ export default function FieldEditor({ field, schema, onUpdate }: FieldEditorProp
     <div className="rounded-md bg-gray-50 px-2 py-1.5 text-sm text-muted">
       {field.displayValue || "—"}
     </div>
+  );
+}
+
+function TextAreaField({ initialValue, onUpdate }: { initialValue: string; onUpdate: (value: unknown) => void }) {
+  const [value, setValue] = useState(initialValue);
+
+  const handleBlur = () => {
+    if (value !== initialValue) {
+      onUpdate(value);
+    }
+  };
+
+  return (
+    <textarea
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      onBlur={handleBlur}
+      rows={3}
+      className="w-full rounded-md border border-border bg-white px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-blue-300 resize-y"
+      placeholder="Add notes..."
+    />
   );
 }
