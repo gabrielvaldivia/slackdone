@@ -114,6 +114,6 @@ export interface BoardItem {
 // Unified board merging multiple lists across workspaces
 export interface UnifiedBoardData {
   columns: BoardColumn[];
-  lists: { listId: string; listTitle: string; workspaceId: string; workspaceName: string; statusColumnId: string | null }[];
+  lists: { listId: string; listTitle: string; workspaceId: string; workspaceName: string; statusColumnId: string | null; statusColumnKey: string | null }[];
   schema?: SchemaField[];
 }
