@@ -83,7 +83,13 @@ export default function Card({ item, columnId, clientColorMap, visibleProperties
     return visibleProperties.has(f.key);
   });
 
-  const hasFooter = (showAssignees && assignees.length > 0) || visibleFields.length > 0;
+  // Show workspace name when item has no valid client field value
+  const hasValidClient = visibleFields.some(
+    (f) => f.label.toLowerCase() === "client" && f.displayValue && !/^Opt[A-Z0-9]+$/.test(f.displayValue)
+  );
+  const workspaceFallback = !hasValidClient && item.workspaceName ? item.workspaceName : null;
+
+  const hasFooter = (showAssignees && assignees.length > 0) || visibleFields.length > 0 || !!workspaceFallback;
 
   return (
     <div
@@ -232,6 +238,20 @@ export default function Card({ item, columnId, clientColorMap, visibleProperties
               </span>
             );
           })}
+
+          {/* Workspace name fallback when no client field */}
+          {workspaceFallback && (
+            <span
+              className="rounded-full px-2 py-0.5 text-[10px] font-medium truncate max-w-[120px]"
+              style={{
+                backgroundColor: clientColorMap?.get(workspaceFallback)?.bg || "#F3F4F6",
+                color: clientColorMap?.get(workspaceFallback)?.text || "#4B5563",
+              }}
+              title={workspaceFallback}
+            >
+              {workspaceFallback}
+            </span>
+          )}
 
           {/* Assignee avatars — pushed to the right */}
           {showAssignees && assignees.length > 0 && (
