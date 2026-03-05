@@ -15,6 +15,7 @@ interface BoardProps {
 const HIDDEN_KEY = "slackdone:hiddenColumns";
 const MINIMIZED_KEY = "slackdone:minimizedColumns";
 const ORDER_KEY = "slackdone:columnOrder";
+const CARD_PROPS_KEY = "slackdone:cardProperties";
 
 function loadHidden(): Set<string> {
   if (typeof window === "undefined") return new Set();
@@ -81,6 +82,20 @@ function saveViews(views: SavedView[]) {
   localStorage.setItem(VIEWS_KEY, JSON.stringify(views));
 }
 
+function loadCardProperties(): string[] | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(CARD_PROPS_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveCardProperties(keys: string[]) {
+  localStorage.setItem(CARD_PROPS_KEY, JSON.stringify(keys));
+}
+
 function applyColumnOrder(columns: BoardColumnType[], savedOrder: string[]): BoardColumnType[] {
   if (savedOrder.length === 0) return columns;
   const colMap = new Map(columns.map((c) => [c.id, c]));
@@ -120,11 +135,65 @@ export default function Board({ data, onRefresh }: BoardProps) {
   const [viewMenuOpen, setViewMenuOpen] = useState<string | null>(null);
   const viewMenuRef = useRef<HTMLDivElement>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [propsOpen, setPropsOpen] = useState(false);
+  const [visibleCardProps, setVisibleCardProps] = useState<string[] | null>(loadCardProperties);
+  const propsRef = useRef<HTMLDivElement>(null);
   const [draggingColumnId, setDraggingColumnId] = useState<string | null>(null);
 
   useEffect(() => {
     setColumns(applyColumnOrder(data.columns, columnOrder));
   }, [data]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Collect all available card properties from items
+  // "assignees" is a virtual property for people fields
+  const availableCardProps = useMemo(() => {
+    const props = new Map<string, { key: string; label: string; type: string }>();
+    props.set("assignees", { key: "assignees", label: "Assignees", type: "people" });
+    for (const col of columns) {
+      for (const item of col.items) {
+        for (const field of item.fields || []) {
+          if (field.type === "people" || field.type === "user") continue; // covered by "assignees"
+          if (field.key === "todo_completed") continue;
+          if (!props.has(field.key)) {
+            props.set(field.key, { key: field.key, label: field.label, type: field.type });
+          }
+        }
+      }
+    }
+    return [...props.values()];
+  }, [columns]);
+
+  // Effective visible properties: use saved or default to client + assignees
+  const effectiveCardProps = useMemo(() => {
+    if (visibleCardProps !== null) return new Set(visibleCardProps);
+    // Default: show assignees + any field labeled "client"
+    const defaults = new Set<string>(["assignees"]);
+    for (const prop of availableCardProps) {
+      if (prop.label.toLowerCase() === "client") defaults.add(prop.key);
+    }
+    return defaults;
+  }, [visibleCardProps, availableCardProps]);
+
+  // Close props dropdown on outside click
+  useEffect(() => {
+    if (!propsOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (propsRef.current && !propsRef.current.contains(e.target as Node)) {
+        setPropsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [propsOpen]);
+
+  const toggleCardProp = (key: string) => {
+    const current = new Set(effectiveCardProps);
+    if (current.has(key)) current.delete(key);
+    else current.add(key);
+    const arr = [...current];
+    setVisibleCardProps(arr);
+    saveCardProperties(arr);
+  };
 
   // Build a map of client name -> unique color, assigned by sorted order
   const clientColorMap = useMemo(() => {
@@ -1021,6 +1090,50 @@ export default function Board({ data, onRefresh }: BoardProps) {
             )}
           </button>
 
+          {/* Properties toggle */}
+          <div className="relative" ref={propsRef}>
+            <button
+              onClick={() => setPropsOpen((v) => !v)}
+              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                propsOpen
+                  ? "bg-blue-100 text-blue-700"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="8" y1="6" x2="21" y2="6" />
+                <line x1="8" y1="12" x2="21" y2="12" />
+                <line x1="8" y1="18" x2="21" y2="18" />
+                <line x1="3" y1="6" x2="3.01" y2="6" />
+                <line x1="3" y1="12" x2="3.01" y2="12" />
+                <line x1="3" y1="18" x2="3.01" y2="18" />
+              </svg>
+              Properties
+            </button>
+            {propsOpen && (
+              <div className="absolute left-0 top-full z-50 mt-1 w-56 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                {availableCardProps.map((prop) => (
+                  <label
+                    key={prop.key}
+                    className="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-sm hover:bg-gray-50"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={effectiveCardProps.has(prop.key)}
+                      onChange={() => toggleCardProp(prop.key)}
+                      className="h-3.5 w-3.5 rounded border-gray-300 text-blue-600"
+                    />
+                    <span className="truncate">{prop.label}</span>
+                    <span className="ml-auto text-[10px] text-gray-400">{prop.type}</span>
+                  </label>
+                ))}
+                {availableCardProps.length === 0 && (
+                  <div className="px-3 py-2 text-xs text-gray-400">No properties available</div>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* Saved view pills */}
           {savedViews.map((view) => (
             <div key={view.id} className="relative" ref={viewMenuOpen === view.id ? viewMenuRef : undefined}>
@@ -1169,6 +1282,7 @@ export default function Board({ data, onRefresh }: BoardProps) {
               clientOptions={clientOptions}
               defaultAssignees={filterAssignees.size > 0 ? filterAssignees : undefined}
               defaultClient={filterClients.size === 1 ? [...filterClients][0] : null}
+              visibleProperties={effectiveCardProps}
               onColumnDragStart={() => handleColumnDragStart(column.id)}
               onColumnDragEnd={handleColumnDragEnd}
               onColumnDrop={() => handleColumnDrop(column.id)}
@@ -1193,6 +1307,7 @@ export default function Board({ data, onRefresh }: BoardProps) {
               onUnhide={() => unhideColumn(column.id)}
               assigneeOptions={assigneeOptions}
               clientOptions={clientOptions}
+              visibleProperties={effectiveCardProps}
             />
           );
         })}

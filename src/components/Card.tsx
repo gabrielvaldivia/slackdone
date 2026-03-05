@@ -7,6 +7,7 @@ interface CardProps {
   item: BoardItem;
   columnId: string;
   clientColorMap?: Map<string, { bg: string; text: string }>;
+  visibleProperties?: Set<string>;
   onDelete?: () => void;
   onRename?: (newTitle: string) => void;
   onClick?: () => void;
@@ -44,7 +45,7 @@ export function getClientName(item: BoardItem): string {
   return item.workspaceName || "";
 }
 
-export default function Card({ item, columnId, clientColorMap, onDelete, onRename, onClick }: CardProps) {
+export default function Card({ item, columnId, clientColorMap, visibleProperties, onDelete, onRename, onClick }: CardProps) {
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(item.title);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -61,9 +62,9 @@ export default function Card({ item, columnId, clientColorMap, onDelete, onRenam
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, [menuOpen]);
+
   const assignees = item.assignees || [];
-  const clientName = getClientName(item);
-  const badgeColor = clientName ? clientColorMap?.get(clientName) ?? null : null;
+  const showAssignees = visibleProperties?.has("assignees") ?? true;
 
   const handleSave = () => {
     const trimmed = editValue.trim();
@@ -72,6 +73,16 @@ export default function Card({ item, columnId, clientColorMap, onDelete, onRenam
     }
     setEditing(false);
   };
+
+  // Collect visible field properties (excluding people fields handled by assignees)
+  const visibleFields = (item.fields || []).filter((f) => {
+    if (f.type === "people" || f.type === "user") return false;
+    if (f.key === "todo_completed") return false;
+    if (!visibleProperties) return false;
+    return visibleProperties.has(f.key);
+  });
+
+  const hasFooter = (showAssignees && assignees.length > 0) || visibleFields.length > 0;
 
   return (
     <div
@@ -160,41 +171,89 @@ export default function Card({ item, columnId, clientColorMap, onDelete, onRenam
         <div className="pr-4">{item.title}</div>
       )}
 
-      {/* Footer: client badge + assignee avatars */}
-      <div className="mt-2 flex items-center justify-between">
-        {clientName && badgeColor ? (
-          <span
-            className="rounded-full px-2 py-0.5 text-[10px] font-medium truncate max-w-[120px]"
-            style={{ backgroundColor: badgeColor.bg, color: badgeColor.text }}
-            title={clientName}
-          >
-            {clientName}
-          </span>
-        ) : (
-          <span />
-        )}
-        {assignees.length > 0 && (
-          <div className="flex items-center gap-1">
-            {assignees.map((user) => (
-              <div
-                key={user.id}
-                title={user.displayName}
-                className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-200 text-[10px] font-medium text-gray-600 overflow-hidden"
+      {/* Footer: dynamic properties */}
+      {hasFooter && (
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          {/* Field properties */}
+          {visibleFields.map((field) => {
+            if (!field.displayValue) return null;
+
+            // Select/status fields: show as colored badge if possible
+            if (field.type === "select" || field.type === "status") {
+              const name = field.displayValue;
+              const color = clientColorMap?.get(name);
+              if (color) {
+                return (
+                  <span
+                    key={field.key}
+                    className="rounded-full px-2 py-0.5 text-[10px] font-medium truncate max-w-[120px]"
+                    style={{ backgroundColor: color.bg, color: color.text }}
+                    title={name}
+                  >
+                    {name}
+                  </span>
+                );
+              }
+              return (
+                <span
+                  key={field.key}
+                  className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600 truncate max-w-[120px]"
+                  title={name}
+                >
+                  {name}
+                </span>
+              );
+            }
+
+            // Date fields
+            if (field.type === "date") {
+              return (
+                <span
+                  key={field.key}
+                  className="text-[10px] text-gray-500"
+                  title={field.label}
+                >
+                  {field.displayValue}
+                </span>
+              );
+            }
+
+            // Default: small text
+            return (
+              <span
+                key={field.key}
+                className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] text-gray-600 truncate max-w-[120px]"
+                title={`${field.label}: ${field.displayValue}`}
               >
-                {user.avatar ? (
-                  <img
-                    src={user.avatar}
-                    alt={user.displayName}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  getInitials(user.displayName)
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+                {field.displayValue}
+              </span>
+            );
+          })}
+
+          {/* Assignee avatars — pushed to the right */}
+          {showAssignees && assignees.length > 0 && (
+            <div className="ml-auto flex items-center gap-1">
+              {assignees.map((user) => (
+                <div
+                  key={user.id}
+                  title={user.displayName}
+                  className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-200 text-[10px] font-medium text-gray-600 overflow-hidden"
+                >
+                  {user.avatar ? (
+                    <img
+                      src={user.avatar}
+                      alt={user.displayName}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    getInitials(user.displayName)
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
