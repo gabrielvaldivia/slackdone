@@ -97,16 +97,19 @@ export default function Header({
                     }
                   }
                   return Array.from(grouped.values()).map((ws) => (
-                    <div key={ws.workspaceId}>
+                    <div key={ws.workspaceId} className="group/ws">
                       <div className="flex items-center justify-between px-3 py-1.5">
                         <span className="text-[10px] font-semibold uppercase tracking-wide text-muted">
                           {ws.workspaceName}
                         </span>
                         <button
                           onClick={() => onDisconnect(ws.workspaceId)}
-                          className="text-[10px] text-muted hover:text-red-600 transition-colors"
+                          className="text-muted hover:text-red-600 transition-colors opacity-0 group-hover/ws:opacity-100"
+                          title="Disconnect workspace"
                         >
-                          Disconnect
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M18 6L6 18" /><path d="M6 6l12 12" />
+                          </svg>
                         </button>
                       </div>
                       {ws.lists.map((list) => (
@@ -137,13 +140,13 @@ export default function Header({
                 <div className="border-t border-border flex">
                   <button
                     onClick={onToggleAddList}
-                    className="flex-1 px-3 py-2 text-xs text-left hover:bg-gray-50"
+                    className="flex-1 px-3 py-2 text-xs text-center hover:bg-gray-50"
                   >
                     + List
                   </button>
                   <button
                     onClick={onConnect}
-                    className="flex-1 px-3 py-2 text-xs text-left hover:bg-gray-50 border-l border-border"
+                    className="flex-1 px-3 py-2 text-xs text-center hover:bg-gray-50 border-l border-border"
                   >
                     + Workspace
                   </button>
