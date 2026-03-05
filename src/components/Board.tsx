@@ -1131,7 +1131,7 @@ export default function Board({ data, onRefresh }: BoardProps) {
           )}
           </div>
 
-          {/* Right: Search, Filter, Properties */}
+          {/* Right: Search + Filter toggle */}
           <div className="ml-auto flex items-center gap-2">
             {/* Search */}
             <div className="relative">
@@ -1192,54 +1192,10 @@ export default function Board({ data, onRefresh }: BoardProps) {
                 </span>
               )}
             </button>
-
-            {/* Properties toggle */}
-            <div className="relative" ref={propsRef}>
-              <button
-                onClick={() => setPropsOpen((v) => !v)}
-                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                  propsOpen
-                    ? "bg-blue-100 text-blue-700"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                }`}
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="8" y1="6" x2="21" y2="6" />
-                  <line x1="8" y1="12" x2="21" y2="12" />
-                  <line x1="8" y1="18" x2="21" y2="18" />
-                  <line x1="3" y1="6" x2="3.01" y2="6" />
-                  <line x1="3" y1="12" x2="3.01" y2="12" />
-                  <line x1="3" y1="18" x2="3.01" y2="18" />
-                </svg>
-                Properties
-              </button>
-              {propsOpen && (
-                <div className="absolute right-0 top-full z-50 mt-1 w-56 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
-                  {availableCardProps.map((prop) => (
-                    <label
-                      key={prop.key}
-                      className="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-sm hover:bg-gray-50"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={effectiveCardProps.has(prop.key)}
-                        onChange={() => toggleCardProp(prop.key)}
-                        className="h-3.5 w-3.5 rounded border-gray-300 text-blue-600"
-                      />
-                      <span className="truncate">{prop.label}</span>
-                      <span className="ml-auto text-[10px] text-gray-400">{prop.type}</span>
-                    </label>
-                  ))}
-                  {availableCardProps.length === 0 && (
-                    <div className="px-3 py-2 text-xs text-gray-400">No properties available</div>
-                  )}
-                </div>
-              )}
-            </div>
           </div>
         </div>
 
-        {/* Collapsible filter row */}
+        {/* Collapsible filter row: Assignee, Client, Show Hidden, Properties */}
         {filtersOpen && (
           <div className="flex flex-wrap items-center gap-2">
             {assigneeOptions.length > 0 && (
@@ -1273,6 +1229,50 @@ export default function Board({ data, onRefresh }: BoardProps) {
                 {showHidden ? "Hide" : "Show"} {hiddenCount} hidden
               </button>
             )}
+
+            {/* Properties */}
+            <div className="relative" ref={propsRef}>
+              <button
+                onClick={() => setPropsOpen((v) => !v)}
+                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                  propsOpen
+                    ? "bg-blue-100 text-blue-700"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="8" y1="6" x2="21" y2="6" />
+                  <line x1="8" y1="12" x2="21" y2="12" />
+                  <line x1="8" y1="18" x2="21" y2="18" />
+                  <line x1="3" y1="6" x2="3.01" y2="6" />
+                  <line x1="3" y1="12" x2="3.01" y2="12" />
+                  <line x1="3" y1="18" x2="3.01" y2="18" />
+                </svg>
+                Properties
+              </button>
+              {propsOpen && (
+                <div className="absolute left-0 top-full z-50 mt-1 w-56 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                  {availableCardProps.map((prop) => (
+                    <label
+                      key={prop.key}
+                      className="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-sm hover:bg-gray-50"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={effectiveCardProps.has(prop.key)}
+                        onChange={() => toggleCardProp(prop.key)}
+                        className="h-3.5 w-3.5 rounded border-gray-300 text-blue-600"
+                      />
+                      <span className="truncate">{prop.label}</span>
+                      <span className="ml-auto text-[10px] text-gray-400">{prop.type}</span>
+                    </label>
+                  ))}
+                  {availableCardProps.length === 0 && (
+                    <div className="px-3 py-2 text-xs text-gray-400">No properties available</div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
