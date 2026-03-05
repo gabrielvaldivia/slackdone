@@ -109,6 +109,7 @@ export default function Board({ data, onRefresh }: BoardProps) {
   const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(loadHidden);
   const [minimizedColumns, setMinimizedColumns] = useState<Set<string>>(loadMinimized);
   const [showHidden, setShowHidden] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [filterAssignees, setFilterAssignees] = useState<Set<string>>(new Set());
   const [filterClients, setFilterClients] = useState<Set<string>>(new Set());
   const [savedViews, setSavedViews] = useState<SavedView[]>(loadViews);
@@ -183,11 +184,13 @@ export default function Board({ data, onRefresh }: BoardProps) {
     return opts.sort((a, b) => a.name.localeCompare(b.name));
   }, [columns, clientColorMap]);
 
-  // Apply filters to columns
+  // Apply filters and search to columns
   const applyFilters = useMemo(() => {
     const hasAssigneeFilter = filterAssignees.size > 0;
     const hasClientFilter = filterClients.size > 0;
-    if (!hasAssigneeFilter && !hasClientFilter) return columns;
+    const query = searchQuery.toLowerCase().trim();
+    const hasSearch = query.length > 0;
+    if (!hasAssigneeFilter && !hasClientFilter && !hasSearch) return columns;
 
     // Expand selected assignee option IDs to all merged user IDs
     const expandedAssigneeIds = new Set<string>();
@@ -213,10 +216,20 @@ export default function Board({ data, onRefresh }: BoardProps) {
           const name = getClientName(item);
           if (!filterClients.has(name)) return false;
         }
+        if (hasSearch) {
+          const title = item.title.toLowerCase();
+          const assigneeNames = (item.assignees || [])
+            .map((a) => (a.displayName || a.name).toLowerCase())
+            .join(" ");
+          const clientName = getClientName(item).toLowerCase();
+          if (!title.includes(query) && !assigneeNames.includes(query) && !clientName.includes(query)) {
+            return false;
+          }
+        }
         return true;
       }),
     }));
-  }, [columns, filterAssignees, filterClients, assigneeOptions]);
+  }, [columns, filterAssignees, filterClients, assigneeOptions, searchQuery]);
 
   const hideColumn = (id: string) => {
     setHiddenColumns((prev) => {
@@ -846,8 +859,43 @@ export default function Board({ data, onRefresh }: BoardProps) {
         </div>
       )}
 
-      {(assigneeOptions.length > 0 || clientOptions.length > 0 || hiddenCount > 0 || savedViews.length > 0) && (
-        <div className="flex flex-wrap items-center gap-2 px-4 pt-3">
+      <div className="flex flex-wrap items-center gap-2 px-4 pt-3">
+          {/* Search */}
+          <div className="relative">
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search..."
+              className="h-7 w-44 rounded-full border border-gray-200 bg-white pl-8 pr-3 text-xs text-gray-700 placeholder-gray-400 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            )}
+          </div>
+
           {/* Saved view pills */}
           {savedViews.map((view) => (
             <div key={view.id} className="relative" ref={viewMenuOpen === view.id ? viewMenuRef : undefined}>
@@ -978,7 +1026,6 @@ export default function Board({ data, onRefresh }: BoardProps) {
             </button>
           )}
         </div>
-      )}
 
       <div className="flex flex-1 gap-4 overflow-x-auto p-4">
         {visibleColumns.map((column) => {
