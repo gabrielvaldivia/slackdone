@@ -578,10 +578,16 @@ export default function Board({ data, onRefresh }: BoardProps) {
               (c.type === "select" || c.type === "status") &&
               c.label.toLowerCase() === "client"
           );
+          console.log("Client debug:", {
+            clientId,
+            clientCol: clientCol ? { id: clientCol.id, key: clientCol.key, label: clientCol.label, options: clientCol.options } : null,
+            allSelectCols: schema.filter((c: { type: string }) => c.type === "select" || c.type === "status").map((c: { id: string; key: string; label: string }) => ({ id: c.id, key: c.key, label: c.label })),
+          });
           if (clientCol?.options) {
             const match = clientCol.options.find(
               (o: { label: string }) => o.label === clientId
             );
+            console.log("Client option match:", match);
             if (match) {
               initialFields.push({
                 column_id: clientCol.id,
