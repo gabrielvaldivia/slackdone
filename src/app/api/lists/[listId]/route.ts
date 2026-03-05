@@ -54,7 +54,7 @@ export async function GET(
             id: col.id,
             key: col.key,
             type: col.type,
-            label: col.label || col.key,
+            label: col.label || col.name || col.key,
             options: col.options?.choices?.map((c: { value: string; label: string; color?: string }) => ({
               value: c.value,
               label: c.label || c.value,
