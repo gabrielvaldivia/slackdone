@@ -153,6 +153,7 @@ export default function Board({ data, onRefresh }: BoardProps) {
       for (const item of col.items) {
         for (const field of item.fields || []) {
           if (field.type === "people" || field.type === "user") continue; // covered by "assignees"
+          if (field.type === "unknown") continue;
           if (field.key === "todo_completed") continue;
           if (!props.has(field.key)) {
             props.set(field.key, { key: field.key, label: field.label, type: field.type });
