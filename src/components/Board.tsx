@@ -580,8 +580,8 @@ export default function Board({ data, onRefresh }: BoardProps) {
           );
           console.log("Client debug:", {
             clientId,
-            clientCol: clientCol ? { id: clientCol.id, key: clientCol.key, label: clientCol.label, options: clientCol.options } : null,
-            allSelectCols: schema.filter((c: { type: string }) => c.type === "select" || c.type === "status").map((c: { id: string; key: string; label: string }) => ({ id: c.id, key: c.key, label: c.label })),
+            clientCol: clientCol ? { id: clientCol.id, key: clientCol.key, label: clientCol.label, type: (clientCol as Record<string,unknown>).type, options: clientCol.options } : null,
+            allCols: schema.map((c: { id: string; key: string; label: string; type: string }) => ({ id: c.id, key: c.key, label: c.label, type: c.type })),
           });
           if (clientCol?.options) {
             const match = clientCol.options.find(
