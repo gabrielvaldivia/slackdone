@@ -66,6 +66,7 @@ interface SavedView {
   name: string;
   assignees: string[];
   clients: string[];
+  properties?: string[];
 }
 
 function loadViews(): SavedView[] {
@@ -350,8 +351,14 @@ export default function Board({ data, onRefresh }: BoardProps) {
     if (filterAssignees.size !== viewAssignees.size || filterClients.size !== viewClients.size) return false;
     for (const id of filterAssignees) if (!viewAssignees.has(id)) return false;
     for (const id of filterClients) if (!viewClients.has(id)) return false;
+    // Check properties match
+    if (view.properties) {
+      const viewProps = new Set(view.properties);
+      if (effectiveCardProps.size !== viewProps.size) return false;
+      for (const key of effectiveCardProps) if (!viewProps.has(key)) return false;
+    }
     return true;
-  }, [activeViewId, savedViews, filterAssignees, filterClients]);
+  }, [activeViewId, savedViews, filterAssignees, filterClients, effectiveCardProps]);
 
   const showSaveView = hasActiveFilters && !filtersMatchActiveView;
 
@@ -363,6 +370,7 @@ export default function Board({ data, onRefresh }: BoardProps) {
       name,
       assignees: [...filterAssignees],
       clients: [...filterClients],
+      properties: [...effectiveCardProps],
     };
     const next = [...savedViews, view];
     setSavedViews(next);
@@ -370,7 +378,7 @@ export default function Board({ data, onRefresh }: BoardProps) {
     setActiveViewId(view.id);
     setSavingView(false);
     setViewName("");
-  }, [viewName, filterAssignees, filterClients, savedViews]);
+  }, [viewName, filterAssignees, filterClients, effectiveCardProps, savedViews]);
 
   const handleLoadView = (view: SavedView) => {
     if (activeViewId === view.id) {
@@ -380,6 +388,10 @@ export default function Board({ data, onRefresh }: BoardProps) {
     } else {
       setFilterAssignees(new Set(view.assignees));
       setFilterClients(new Set(view.clients));
+      if (view.properties) {
+        setVisibleCardProps(view.properties);
+        saveCardProperties(view.properties);
+      }
       setActiveViewId(view.id);
     }
   };
