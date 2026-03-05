@@ -90,10 +90,13 @@ function ApiKeyManager({
 
 function CopySetupPrompt({ apiKey }: { apiKey: string | null }) {
   const [copied, setCopied] = useState(false);
+  const [origin, setOrigin] = useState("https://your-app.vercel.app");
+
+  useEffect(() => {
+    setOrigin(window.location.origin);
+  }, []);
 
   function buildPrompt() {
-    const origin =
-      typeof window !== "undefined" ? window.location.origin : "https://your-app.vercel.app";
     const key = apiKey || "YOUR_API_KEY";
 
     return `Set up a Slackdone integration for this project. Do the following:
