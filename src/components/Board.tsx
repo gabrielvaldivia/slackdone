@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { UnifiedBoardData, BoardColumn as BoardColumnType, BoardItem } from "@/lib/types";
 import Column from "./Column";
 import CardDetailModal from "./CardDetailModal";
@@ -58,6 +58,29 @@ function saveColumnOrder(ids: string[]) {
   localStorage.setItem(ORDER_KEY, JSON.stringify(ids));
 }
 
+const VIEWS_KEY = "slackdone:savedViews";
+
+interface SavedView {
+  id: string;
+  name: string;
+  assignees: string[];
+  clients: string[];
+}
+
+function loadViews(): SavedView[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(VIEWS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveViews(views: SavedView[]) {
+  localStorage.setItem(VIEWS_KEY, JSON.stringify(views));
+}
+
 function applyColumnOrder(columns: BoardColumnType[], savedOrder: string[]): BoardColumnType[] {
   if (savedOrder.length === 0) return columns;
   const colMap = new Map(columns.map((c) => [c.id, c]));
@@ -88,6 +111,13 @@ export default function Board({ data, onRefresh }: BoardProps) {
   const [showHidden, setShowHidden] = useState(false);
   const [filterAssignees, setFilterAssignees] = useState<Set<string>>(new Set());
   const [filterClients, setFilterClients] = useState<Set<string>>(new Set());
+  const [savedViews, setSavedViews] = useState<SavedView[]>(loadViews);
+  const [activeViewId, setActiveViewId] = useState<string | null>(null);
+  const [savingView, setSavingView] = useState(false);
+  const [viewName, setViewName] = useState("");
+  const saveInputRef = useRef<HTMLInputElement>(null);
+  const [viewMenuOpen, setViewMenuOpen] = useState<string | null>(null);
+  const viewMenuRef = useRef<HTMLDivElement>(null);
   const [draggingColumnId, setDraggingColumnId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -223,6 +253,62 @@ export default function Board({ data, onRefresh }: BoardProps) {
       return next;
     });
   };
+
+  const hasActiveFilters = filterAssignees.size > 0 || filterClients.size > 0;
+
+  const handleSaveView = useCallback(() => {
+    const name = viewName.trim();
+    if (!name) return;
+    const view: SavedView = {
+      id: Date.now().toString(),
+      name,
+      assignees: [...filterAssignees],
+      clients: [...filterClients],
+    };
+    const next = [...savedViews, view];
+    setSavedViews(next);
+    saveViews(next);
+    setActiveViewId(view.id);
+    setSavingView(false);
+    setViewName("");
+  }, [viewName, filterAssignees, filterClients, savedViews]);
+
+  const handleLoadView = (view: SavedView) => {
+    setFilterAssignees(new Set(view.assignees));
+    setFilterClients(new Set(view.clients));
+    setActiveViewId(view.id);
+  };
+
+  const handleDeleteView = (id: string) => {
+    const next = savedViews.filter((v) => v.id !== id);
+    setSavedViews(next);
+    saveViews(next);
+    if (activeViewId === id) setActiveViewId(null);
+    setViewMenuOpen(null);
+  };
+
+  const handleClearFilters = () => {
+    setFilterAssignees(new Set());
+    setFilterClients(new Set());
+    setActiveViewId(null);
+  };
+
+  // Close view context menu on outside click
+  useEffect(() => {
+    if (!viewMenuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (viewMenuRef.current && !viewMenuRef.current.contains(e.target as Node)) {
+        setViewMenuOpen(null);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [viewMenuOpen]);
+
+  // Focus save input when it appears
+  useEffect(() => {
+    if (savingView) saveInputRef.current?.focus();
+  }, [savingView]);
 
   const visibleColumns = applyFilters.filter((c) => !hiddenColumns.has(c.id));
   const hiddenColumnsList = applyFilters.filter((c) => hiddenColumns.has(c.id));
@@ -745,14 +831,65 @@ export default function Board({ data, onRefresh }: BoardProps) {
         </div>
       )}
 
-      {(assigneeOptions.length > 0 || clientOptions.length > 0 || hiddenCount > 0) && (
-        <div className="flex items-center gap-2 px-4 pt-3">
+      {(assigneeOptions.length > 0 || clientOptions.length > 0 || hiddenCount > 0 || savedViews.length > 0) && (
+        <div className="flex flex-wrap items-center gap-2 px-4 pt-3">
+          {/* Saved view pills */}
+          {savedViews.map((view) => (
+            <div key={view.id} className="relative" ref={viewMenuOpen === view.id ? viewMenuRef : undefined}>
+              <button
+                onClick={() => handleLoadView(view)}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  setViewMenuOpen(view.id);
+                }}
+                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                  activeViewId === view.id
+                    ? "bg-blue-100 text-blue-700 ring-1 ring-blue-300"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+              >
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+                {view.name}
+              </button>
+              <button
+                onClick={() => setViewMenuOpen(viewMenuOpen === view.id ? null : view.id)}
+                className="absolute -right-1 -top-1 hidden h-4 w-4 items-center justify-center rounded-full bg-gray-300 text-[8px] text-gray-600 hover:bg-gray-400 group-hover:flex"
+                style={{ display: viewMenuOpen === view.id || activeViewId === view.id ? undefined : "none" }}
+              >
+                &times;
+              </button>
+              {viewMenuOpen === view.id && (
+                <div className="absolute left-0 top-full z-50 mt-1 min-w-[120px] rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                  <button
+                    onClick={() => handleDeleteView(view.id)}
+                    className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50"
+                  >
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="3 6 5 6 21 6" />
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                    </svg>
+                    Delete view
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+
+          {/* Separator between views and filters */}
+          {savedViews.length > 0 && (assigneeOptions.length > 0 || clientOptions.length > 0) && (
+            <div className="h-4 w-px bg-gray-300" />
+          )}
+
+          {/* Filter dropdowns */}
           {assigneeOptions.length > 0 && (
             <FilterDropdown
               label="Assignee"
               options={assigneeOptions}
               selected={filterAssignees}
-              onChange={setFilterAssignees}
+              onChange={(v) => { setFilterAssignees(v); setActiveViewId(null); }}
             />
           )}
           {clientOptions.length > 0 && (
@@ -760,9 +897,68 @@ export default function Board({ data, onRefresh }: BoardProps) {
               label="Client"
               options={clientOptions}
               selected={filterClients}
-              onChange={setFilterClients}
+              onChange={(v) => { setFilterClients(v); setActiveViewId(null); }}
             />
           )}
+
+          {/* Save view / Clear */}
+          {hasActiveFilters && !savingView && (
+            <>
+              <button
+                onClick={() => setSavingView(true)}
+                className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-600 transition-colors hover:bg-blue-100"
+              >
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                  <polyline points="17 21 17 13 7 13 7 21" />
+                  <polyline points="7 3 7 8 15 8" />
+                </svg>
+                Save view
+              </button>
+              <button
+                onClick={handleClearFilters}
+                className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs text-gray-500 hover:text-gray-700"
+              >
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+                Clear
+              </button>
+            </>
+          )}
+          {savingView && (
+            <form
+              className="inline-flex items-center gap-1"
+              onSubmit={(e) => { e.preventDefault(); handleSaveView(); }}
+            >
+              <input
+                ref={saveInputRef}
+                type="text"
+                value={viewName}
+                onChange={(e) => setViewName(e.target.value)}
+                placeholder="View name..."
+                className="h-6 w-32 rounded-full border border-gray-300 px-2.5 text-xs focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                onKeyDown={(e) => { if (e.key === "Escape") { setSavingView(false); setViewName(""); } }}
+              />
+              <button
+                type="submit"
+                disabled={!viewName.trim()}
+                className="rounded-full bg-blue-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-40"
+              >
+                Save
+              </button>
+              <button
+                type="button"
+                onClick={() => { setSavingView(false); setViewName(""); }}
+                className="rounded-full px-1.5 py-1 text-xs text-gray-500 hover:text-gray-700"
+              >
+                Cancel
+              </button>
+            </form>
+          )}
+
+          {/* Hidden columns toggle */}
           {hiddenCount > 0 && (
             <button
               onClick={() => setShowHidden((v) => !v)}
