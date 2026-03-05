@@ -112,16 +112,19 @@ export default function Header({
                       {ws.lists.map((list) => (
                         <div
                           key={`${list.workspaceId}-${list.listId}`}
-                          className="flex items-center justify-between px-3 py-1.5 text-xs"
+                          className="group/item flex items-center justify-between px-3 py-1.5 text-xs"
                         >
                           <span className="truncate">{list.listTitle}</span>
                           <button
                             onClick={(e) =>
                               handleRemoveList(list.workspaceId, list.listId, e)
                             }
-                            className="ml-2 shrink-0 text-muted hover:text-red-600 transition-colors"
+                            className="ml-2 shrink-0 text-muted hover:text-red-600 transition-colors opacity-0 group-hover/item:opacity-100"
                           >
-                            Remove
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="3 6 5 6 21 6" />
+                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                            </svg>
                           </button>
                         </div>
                       ))}
@@ -136,13 +139,13 @@ export default function Header({
                     onClick={onToggleAddList}
                     className="flex-1 px-3 py-2 text-xs text-left hover:bg-gray-50"
                   >
-                    + Add list
+                    + List
                   </button>
                   <button
                     onClick={onConnect}
                     className="flex-1 px-3 py-2 text-xs text-left hover:bg-gray-50 border-l border-border"
                   >
-                    + Add workspace
+                    + Workspace
                   </button>
                 </div>
               </div>
