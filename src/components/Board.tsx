@@ -584,7 +584,7 @@ export default function Board({ data, onRefresh }: BoardProps) {
               }
               cells.push({
                 column_id: peopleCol.id,
-                people: resolvedIds,
+                value: resolvedIds,
               });
             }
           }
