@@ -71,34 +71,49 @@ export default function Header({
             </span>
           )}
         </h1>
+      </div>
 
+      <div className="flex items-center gap-2">
         {/* Lists dropdown */}
         {lists.length > 0 && (
           <div className="relative group">
             <button className="rounded-md border border-border px-3 py-1 text-xs hover:bg-gray-50 transition-colors">
               {lists.length} list{lists.length !== 1 ? "s" : ""}
             </button>
-            <div className="absolute left-0 top-full z-10 hidden group-hover:block min-w-[220px] pt-1">
+            <div className="absolute right-0 top-full z-10 hidden group-hover:block min-w-[220px] pt-1">
               <div className="rounded-md border border-border bg-white shadow-md">
-                {lists.map((list) => (
-                  <div
-                    key={`${list.workspaceId}-${list.listId}`}
-                    className="flex items-center justify-between px-3 py-2 text-xs"
-                  >
-                    <span className="flex items-center gap-1 min-w-0">
-                      <span className="text-muted">{list.workspaceName}:</span>
-                      <span className="truncate">{list.listTitle}</span>
-                    </span>
-                    <button
-                      onClick={(e) =>
-                        handleRemoveList(list.workspaceId, list.listId, e)
-                      }
-                      className="ml-2 shrink-0 text-muted hover:text-red-600 transition-colors"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                ))}
+                {(() => {
+                  // Group lists by workspace
+                  const grouped = new Map<string, ListInfo[]>();
+                  for (const list of lists) {
+                    const key = list.workspaceName;
+                    if (!grouped.has(key)) grouped.set(key, []);
+                    grouped.get(key)!.push(list);
+                  }
+                  return Array.from(grouped.entries()).map(([wsName, wsLists]) => (
+                    <div key={wsName}>
+                      <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted">
+                        {wsName}
+                      </div>
+                      {wsLists.map((list) => (
+                        <div
+                          key={`${list.workspaceId}-${list.listId}`}
+                          className="flex items-center justify-between px-3 py-1.5 text-xs"
+                        >
+                          <span className="truncate">{list.listTitle}</span>
+                          <button
+                            onClick={(e) =>
+                              handleRemoveList(list.workspaceId, list.listId, e)
+                            }
+                            className="ml-2 shrink-0 text-muted hover:text-red-600 transition-colors"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ));
+                })()}
                 <div className="border-t border-border">
                   <button
                     onClick={onToggleAddList}
@@ -111,38 +126,37 @@ export default function Header({
             </div>
           </div>
         )}
-      </div>
 
-      <div className="flex items-center gap-2">
         {/* Workspace management dropdown */}
         {workspaces.length > 0 && (
           <div className="relative group">
             <button className="rounded-md border border-border px-3 py-1 text-xs hover:bg-gray-50 transition-colors">
               {workspaces.length} workspace{workspaces.length !== 1 ? "s" : ""}
             </button>
-            <div className="absolute right-0 top-full z-10 hidden group-hover:block min-w-[180px] pt-1"><div className="rounded-md border border-border bg-white shadow-md">
-              {workspaces.map((w) => (
-                <div
-                  key={w.id}
-                  className="flex items-center justify-between px-3 py-2 text-xs"
-                >
-                  <span>{w.name}</span>
-                  <button
-                    onClick={() => onDisconnect(w.id)}
-                    className="text-muted hover:text-red-600 transition-colors"
+            <div className="absolute right-0 top-full z-10 hidden group-hover:block min-w-[180px] pt-1">
+              <div className="rounded-md border border-border bg-white shadow-md">
+                {workspaces.map((w) => (
+                  <div
+                    key={w.id}
+                    className="flex items-center justify-between px-3 py-2 text-xs"
                   >
-                    Disconnect
+                    <span>{w.name}</span>
+                    <button
+                      onClick={() => onDisconnect(w.id)}
+                      className="text-muted hover:text-red-600 transition-colors"
+                    >
+                      Disconnect
+                    </button>
+                  </div>
+                ))}
+                <div className="border-t border-border">
+                  <button
+                    onClick={onConnect}
+                    className="w-full px-3 py-2 text-xs text-left hover:bg-gray-50"
+                  >
+                    + Add workspace
                   </button>
                 </div>
-              ))}
-              <div className="border-t border-border">
-                <button
-                  onClick={onConnect}
-                  className="w-full px-3 py-2 text-xs text-left hover:bg-gray-50"
-                >
-                  + Add workspace
-                </button>
-              </div>
               </div>
             </div>
           </div>
