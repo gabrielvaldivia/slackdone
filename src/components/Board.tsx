@@ -691,8 +691,39 @@ export default function Board({ data, onRefresh }: BoardProps) {
     const peopleField = targetItem.fields?.find((f) => f.type === "people" || f.type === "user");
     if (!peopleField) return;
 
+    // Resolve cross-workspace user IDs to the correct workspace
+    const workspaceUserIds = new Set<string>();
+    for (const col of columns) {
+      for (const item of col.items) {
+        if (item.sourceWorkspaceId === targetItem!.sourceWorkspaceId) {
+          for (const a of item.assignees || []) {
+            workspaceUserIds.add(a.id);
+          }
+        }
+      }
+    }
+
+    const resolvedIds: string[] = [];
+    for (const uid of userIds) {
+      // If this ID already belongs to the right workspace, use it directly
+      if (workspaceUserIds.has(uid)) {
+        resolvedIds.push(uid);
+        continue;
+      }
+      // Otherwise, find the merged option and resolve to the correct workspace ID
+      const opt = assigneeOptions.find((o) => o.id === uid || o.ids?.includes(uid));
+      if (opt?.ids) {
+        const match = opt.ids.find((id) => workspaceUserIds.has(id));
+        if (match) {
+          resolvedIds.push(match);
+          continue;
+        }
+      }
+      resolvedIds.push(uid);
+    }
+
     // Build updated assignees from the known assignee options
-    const updatedAssignees = userIds.map((uid) => {
+    const updatedAssignees = resolvedIds.map((uid) => {
       const existing = targetItem!.assignees?.find((a) => a.id === uid);
       if (existing) return existing;
       const opt = assigneeOptions.find((o) => o.id === uid || o.ids?.includes(uid));
@@ -715,7 +746,7 @@ export default function Board({ data, onRefresh }: BoardProps) {
             assignees: updatedAssignees,
             fields: item.fields?.map((f) =>
               f.columnId === peopleField.columnId
-                ? { ...f, value: userIds, displayValue: updatedAssignees.map((a) => a.displayName).join(", ") }
+                ? { ...f, value: resolvedIds, displayValue: updatedAssignees.map((a) => a.displayName).join(", ") }
                 : f
             ),
           };
@@ -731,7 +762,7 @@ export default function Board({ data, onRefresh }: BoardProps) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             workspaceId: targetItem.sourceWorkspaceId,
-            cells: [{ column_id: peopleField.columnId, user: userIds }],
+            cells: [{ column_id: peopleField.columnId, user: resolvedIds }],
           }),
         }
       );

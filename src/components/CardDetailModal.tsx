@@ -63,6 +63,14 @@ export default function CardDetailModal({
   // Find the people field column ID for assignee updates
   const peopleField = fields.find((f) => f.type === "people" || f.type === "user");
 
+  // Check if an option is already assigned (handles cross-workspace merged IDs)
+  const isAssigned = (optId: string) => {
+    if (assigneeIds.has(optId)) return true;
+    const opt = assigneeOptions.find((o) => o.id === optId);
+    if (opt?.ids) return opt.ids.some((uid) => assigneeIds.has(uid));
+    return false;
+  };
+
   const handleTitleBlur = () => {
     const trimmed = title.trim();
     if (trimmed && trimmed !== item.title) {
@@ -72,10 +80,17 @@ export default function CardDetailModal({
 
   const toggleAssignee = (id: string) => {
     const current = assignees.map((a) => a.id);
+    // Check if this person is already assigned (across merged workspace IDs)
+    const opt = assigneeOptions.find((o) => o.id === id);
+    const allIdsForPerson = opt?.ids || [id];
+    const existingId = current.find((uid) => allIdsForPerson.includes(uid));
+
     let next: string[];
-    if (current.includes(id)) {
-      next = current.filter((uid) => uid !== id);
+    if (existingId) {
+      // Remove — filter out the workspace-specific ID that's already there
+      next = current.filter((uid) => uid !== existingId);
     } else {
+      // Add — pass the option ID; Board will resolve to correct workspace
       next = [...current, id];
     }
     if (onUpdateAssignees) {
@@ -179,7 +194,7 @@ export default function CardDetailModal({
                     >
                       <input
                         type="checkbox"
-                        checked={assigneeIds.has(opt.id)}
+                        checked={isAssigned(opt.id)}
                         onChange={() => toggleAssignee(opt.id)}
                         className="h-3 w-3 rounded border-gray-300 text-blue-600"
                       />
