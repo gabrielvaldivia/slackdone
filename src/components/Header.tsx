@@ -74,28 +74,42 @@ export default function Header({
       </div>
 
       <div className="flex items-center gap-2">
-        {/* Lists dropdown */}
-        {lists.length > 0 && (
+        {/* Combined lists & workspaces dropdown */}
+        {(workspaces.length > 0 || lists.length > 0) ? (
           <div className="relative group">
             <button className="rounded-md border border-border px-3 py-1 text-xs hover:bg-gray-50 transition-colors">
-              {lists.length} list{lists.length !== 1 ? "s" : ""}
+              Lists
             </button>
-            <div className="absolute right-0 top-full z-10 hidden group-hover:block min-w-[220px] pt-1">
+            <div className="absolute right-0 top-full z-10 hidden group-hover:block min-w-[240px] pt-1">
               <div className="rounded-md border border-border bg-white shadow-md">
                 {(() => {
-                  // Group lists by workspace
-                  const grouped = new Map<string, ListInfo[]>();
-                  for (const list of lists) {
-                    const key = list.workspaceName;
-                    if (!grouped.has(key)) grouped.set(key, []);
-                    grouped.get(key)!.push(list);
+                  // Group lists by workspace, include workspaces with no lists
+                  const grouped = new Map<string, { workspaceId: string; workspaceName: string; lists: ListInfo[] }>();
+                  for (const w of workspaces) {
+                    grouped.set(w.id, { workspaceId: w.id, workspaceName: w.name, lists: [] });
                   }
-                  return Array.from(grouped.entries()).map(([wsName, wsLists]) => (
-                    <div key={wsName}>
-                      <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted">
-                        {wsName}
+                  for (const list of lists) {
+                    const entry = grouped.get(list.workspaceId);
+                    if (entry) {
+                      entry.lists.push(list);
+                    } else {
+                      grouped.set(list.workspaceId, { workspaceId: list.workspaceId, workspaceName: list.workspaceName, lists: [list] });
+                    }
+                  }
+                  return Array.from(grouped.values()).map((ws) => (
+                    <div key={ws.workspaceId}>
+                      <div className="flex items-center justify-between px-3 py-1.5">
+                        <span className="text-[10px] font-semibold uppercase tracking-wide text-muted">
+                          {ws.workspaceName}
+                        </span>
+                        <button
+                          onClick={() => onDisconnect(ws.workspaceId)}
+                          className="text-[10px] text-muted hover:text-red-600 transition-colors"
+                        >
+                          Disconnect
+                        </button>
                       </div>
-                      {wsLists.map((list) => (
+                      {ws.lists.map((list) => (
                         <div
                           key={`${list.workspaceId}-${list.listId}`}
                           className="flex items-center justify-between px-3 py-1.5 text-xs"
@@ -111,48 +125,22 @@ export default function Header({
                           </button>
                         </div>
                       ))}
+                      {ws.lists.length === 0 && (
+                        <div className="px-3 py-1.5 text-xs text-muted italic">No lists</div>
+                      )}
                     </div>
                   ));
                 })()}
-                <div className="border-t border-border">
+                <div className="border-t border-border flex">
                   <button
                     onClick={onToggleAddList}
-                    className="w-full px-3 py-2 text-xs text-left hover:bg-gray-50"
+                    className="flex-1 px-3 py-2 text-xs text-left hover:bg-gray-50"
                   >
                     + Add list
                   </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Workspace management dropdown */}
-        {workspaces.length > 0 && (
-          <div className="relative group">
-            <button className="rounded-md border border-border px-3 py-1 text-xs hover:bg-gray-50 transition-colors">
-              {workspaces.length} workspace{workspaces.length !== 1 ? "s" : ""}
-            </button>
-            <div className="absolute right-0 top-full z-10 hidden group-hover:block min-w-[180px] pt-1">
-              <div className="rounded-md border border-border bg-white shadow-md">
-                {workspaces.map((w) => (
-                  <div
-                    key={w.id}
-                    className="flex items-center justify-between px-3 py-2 text-xs"
-                  >
-                    <span>{w.name}</span>
-                    <button
-                      onClick={() => onDisconnect(w.id)}
-                      className="text-muted hover:text-red-600 transition-colors"
-                    >
-                      Disconnect
-                    </button>
-                  </div>
-                ))}
-                <div className="border-t border-border">
                   <button
                     onClick={onConnect}
-                    className="w-full px-3 py-2 text-xs text-left hover:bg-gray-50"
+                    className="flex-1 px-3 py-2 text-xs text-left hover:bg-gray-50 border-l border-border"
                   >
                     + Add workspace
                   </button>
@@ -160,23 +148,12 @@ export default function Header({
               </div>
             </div>
           </div>
-        )}
-
-        {lists.length === 0 && (
-          <button
-            onClick={onToggleAddList}
-            className="rounded-md border border-border px-3 py-1 text-xs hover:bg-foreground hover:text-background transition-colors"
-          >
-            + Add List
-          </button>
-        )}
-
-        {workspaces.length === 0 && (
+        ) : (
           <button
             onClick={onConnect}
             className="rounded-md border border-border px-3 py-1 text-xs hover:bg-foreground hover:text-background transition-colors"
           >
-            + Connect
+            + Connect workspace
           </button>
         )}
 
