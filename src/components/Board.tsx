@@ -501,9 +501,11 @@ export default function Board({ data, onRefresh }: BoardProps) {
     }
     if (!targetList) return;
 
-    const fields: Record<string, unknown> = {};
+    // items.create fields use column KEYS (not IDs) as property names.
+    // Format: { "name": "title", "ColXXXkey": ["optId"], "ColYYYkey": ["userId"] }
+    const fields: Record<string, unknown> = { name: title };
 
-    // Fetch the list schema to resolve column IDs for all fields
+    // Fetch the list schema to resolve column keys for status, assignee, and client
     try {
       const res = await fetch(
         `/api/lists/${targetList.listId}?workspaceId=${targetList.workspaceId}`
@@ -512,31 +514,24 @@ export default function Board({ data, onRefresh }: BoardProps) {
         const listData = await res.json();
         const schema = listData.schema || [];
 
-        // Title — find the name column's ID from schema
-        const nameCol = schema.find((c: { key: string }) => c.key === "name");
-        if (nameCol) {
-          fields[nameCol.id] = title;
-        }
-
-        // Status field
-        if (targetList.statusColumnId && columnId !== "__none__" && columnId !== "no status") {
+        // Status field — use statusColumnKey, value as array
+        if (targetList.statusColumnKey && columnId !== "__none__" && columnId !== "no status") {
           if (listData.statusColumn?.options) {
             for (const opt of listData.statusColumn.options) {
               if (opt.name.toLowerCase().trim() === columnId) {
-                fields[targetList.statusColumnId] = { id: opt.id };
+                fields[targetList.statusColumnKey] = [opt.id];
                 break;
               }
             }
           }
         }
 
-        // Assignee field — find first people/user column in schema
+        // Assignee field — find people/user column, use its KEY
         if (assigneeIds.length > 0) {
           const peopleCol = schema.find(
             (c: { type: string }) => c.type === "people" || c.type === "user"
           );
           if (peopleCol) {
-            // Build a set of all user IDs that belong to the target workspace
             const workspaceUserIds = new Set<string>();
             for (const col of columns) {
               for (const item of col.items) {
@@ -548,23 +543,22 @@ export default function Board({ data, onRefresh }: BoardProps) {
               }
             }
 
-            // For each selected assignee, pick the user ID that exists in this workspace
             const resolvedIds: string[] = [];
             for (const selectedId of assigneeIds) {
               const opt = assigneeOptions.find((o) => o.id === selectedId);
               if (opt?.ids) {
                 const match = opt.ids.find((uid) => workspaceUserIds.has(uid));
                 if (match) resolvedIds.push(match);
-                else resolvedIds.push(selectedId); // fallback
+                else resolvedIds.push(selectedId);
               } else {
                 resolvedIds.push(selectedId);
               }
             }
-            fields[peopleCol.id] = resolvedIds;
+            fields[peopleCol.key] = resolvedIds;
           }
         }
 
-        // Client field — find select column labeled "client" in schema
+        // Client field — find select column labeled "client", use its KEY
         if (clientId) {
           const clientCol = schema.find(
             (c: { type: string; label: string }) =>
@@ -576,7 +570,7 @@ export default function Board({ data, onRefresh }: BoardProps) {
               (o: { label: string }) => o.label === clientId
             );
             if (match) {
-              fields[clientCol.id] = { id: match.value };
+              fields[clientCol.key] = [match.value];
             }
           }
         }
