@@ -502,36 +502,33 @@ export default function Board({ data, onRefresh }: BoardProps) {
     if (!targetList) return;
 
     try {
-      // Step 1: Create the item (Slack returns the new item with its ID)
+      // Create the item with title in rich_text format
+      const nameValue = JSON.stringify([
+        {
+          type: "rich_text_section",
+          elements: [{ type: "text", text: title }],
+        },
+      ]);
+
       const createRes = await fetch(`/api/lists/${targetList.listId}/items`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           workspaceId: targetList.workspaceId,
-          fields: {},
+          fields: { name: nameValue },
         }),
       });
       if (!createRes.ok) throw new Error("Create failed");
       const created = await createRes.json();
       const newItemId = created.item?.id;
-      if (!newItemId) throw new Error("No item ID returned");
+      if (!newItemId) {
+        onRefresh();
+        return;
+      }
 
-      // Step 2: Build cells to set title, status, assignees, client via update
-      // (the cells/update format is reliable — used by drag-drop and rename)
+      // Build update cells for status, assignees, client
       const cells: Array<Record<string, unknown>> = [];
 
-      // Title — rich_text format
-      cells.push({
-        column_id: "name",
-        value: JSON.stringify([
-          {
-            type: "rich_text_section",
-            elements: [{ type: "text", text: title }],
-          },
-        ]),
-      });
-
-      // Fetch schema to resolve column IDs for status, assignee, client
       try {
         const schemaRes = await fetch(
           `/api/lists/${targetList.listId}?workspaceId=${targetList.workspaceId}`
@@ -610,22 +607,28 @@ export default function Board({ data, onRefresh }: BoardProps) {
           }
         }
       } catch {
-        // proceed with title-only update
+        // proceed without extra fields
       }
 
-      // Step 3: Update the newly created item with all fields
-      const updateRes = await fetch(
-        `/api/lists/${targetList.listId}/items/${newItemId}`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            workspaceId: targetList.workspaceId,
-            cells,
-          }),
+      // Update with status/assignee/client if any extra cells to set
+      if (cells.length > 0) {
+        const updateRes = await fetch(
+          `/api/lists/${targetList.listId}/items/${newItemId}`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              workspaceId: targetList.workspaceId,
+              cells,
+            }),
+          }
+        );
+        if (!updateRes.ok) {
+          // Log but don't fail — item was created with title at least
+          const errData = await updateRes.json().catch(() => ({}));
+          console.error("Update after create failed:", errData);
         }
-      );
-      if (!updateRes.ok) throw new Error("Update failed");
+      }
 
       onRefresh();
     } catch {
