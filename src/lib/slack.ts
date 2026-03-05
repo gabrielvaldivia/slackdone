@@ -15,8 +15,8 @@ async function slackFetch(
   });
   const data = await res.json();
   if (!data.ok) {
-    const detail = data.errors ? ` ${JSON.stringify(data.errors)}` : "";
-    throw new Error(`Slack API ${method}: ${data.error}${detail}`);
+    const extra = { errors: data.errors, metadata: data.response_metadata };
+    throw new Error(`Slack API ${method}: ${data.error} ${JSON.stringify(extra)}`);
   }
   return data;
 }
