@@ -976,7 +976,9 @@ export default function Board({ data, onRefresh }: BoardProps) {
             }`}
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+              <line x1="4" y1="6" x2="20" y2="6" />
+              <line x1="6" y1="12" x2="18" y2="12" />
+              <line x1="8" y1="18" x2="16" y2="18" />
             </svg>
             Filter
             {hasActiveFilters && !filtersOpen && (
