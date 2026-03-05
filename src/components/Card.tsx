@@ -177,6 +177,8 @@ export default function Card({ item, columnId, clientColorMap, visibleProperties
           {/* Field properties */}
           {visibleFields.map((field) => {
             if (!field.displayValue) return null;
+            // Hide deleted Slack option IDs (e.g. "Opt448EIRVP")
+            if (/^Opt[A-Z0-9]+$/.test(field.displayValue)) return null;
 
             // Select/status fields: show as colored badge if possible
             if (field.type === "select" || field.type === "status") {

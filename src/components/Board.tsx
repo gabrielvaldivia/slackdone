@@ -245,7 +245,7 @@ export default function Board({ data, onRefresh }: BoardProps) {
     for (const col of columns) {
       for (const item of col.items) {
         const name = getClientName(item);
-        if (name && !seen.has(name)) {
+        if (name && !seen.has(name) && !/^Opt[A-Z0-9]+$/.test(name)) {
           seen.add(name);
           const color = clientColorMap.get(name);
           opts.push({ id: name, name, badgeColor: color });
