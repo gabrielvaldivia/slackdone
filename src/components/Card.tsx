@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { BoardItem } from "@/lib/types";
 
 interface CardProps {
@@ -47,7 +47,20 @@ export function getClientName(item: BoardItem): string {
 export default function Card({ item, columnId, clientColorMap, onDelete, onRename, onClick }: CardProps) {
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(item.title);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [menuOpen]);
   const assignees = item.assignees || [];
   const clientName = getClientName(item);
   const badgeColor = clientName ? clientColorMap?.get(clientName) ?? null : null;
@@ -93,17 +106,37 @@ export default function Card({ item, columnId, clientColorMap, onDelete, onRenam
       }}
       className="group relative cursor-grab rounded-lg bg-white p-3 text-sm shadow-sm hover:shadow-md transition-shadow active:cursor-grabbing"
     >
-      {/* Delete button */}
+      {/* 3-dot menu */}
       {onDelete && !editing && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete();
-          }}
-          className="absolute right-1.5 top-1.5 hidden group-hover:flex items-center justify-center w-5 h-5 rounded text-gray-400 hover:bg-red-100 hover:text-red-600 transition-colors"
-        >
-          <span className="text-xs leading-none">×</span>
-        </button>
+        <div ref={menuRef} className="absolute right-1.5 top-1.5">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setMenuOpen((prev) => !prev);
+            }}
+            className={`${menuOpen ? "flex" : "hidden group-hover:flex"} items-center justify-center w-5 h-5 rounded text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors`}
+          >
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+              <circle cx="8" cy="3" r="1.5" />
+              <circle cx="8" cy="8" r="1.5" />
+              <circle cx="8" cy="13" r="1.5" />
+            </svg>
+          </button>
+          {menuOpen && (
+            <div className="absolute right-0 top-6 z-50 min-w-[120px] rounded-md bg-white py-1 shadow-lg ring-1 ring-black/5">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setMenuOpen(false);
+                  onDelete();
+                }}
+                className="flex w-full items-center px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          )}
+        </div>
       )}
 
       {/* Title */}
