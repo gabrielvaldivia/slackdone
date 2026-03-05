@@ -61,7 +61,7 @@ export default function CardDetailModal({
   const assigneeIds = new Set(assignees.map((a) => a.id));
 
   // Find the people field column ID for assignee updates
-  const peopleField = fields.find((f) => f.type === "people");
+  const peopleField = fields.find((f) => f.type === "people" || f.type === "user");
 
   const handleTitleBlur = () => {
     const trimmed = title.trim();
@@ -203,8 +203,8 @@ export default function CardDetailModal({
 
           {/* Fields */}
           {fields.map((field) => {
-            // Skip people fields shown above as assignees
-            if (field.type === "people") return null;
+            // Skip people/user fields shown above as assignees
+            if (field.type === "people" || field.type === "user") return null;
 
             const sf = schemaMap.get(field.columnId) || schemaByKey.get(field.key);
 

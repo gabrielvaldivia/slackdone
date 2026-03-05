@@ -687,7 +687,7 @@ export default function Board({ data, onRefresh }: BoardProps) {
     }
     if (!targetItem) return;
 
-    const peopleField = targetItem.fields?.find((f) => f.type === "people");
+    const peopleField = targetItem.fields?.find((f) => f.type === "people" || f.type === "user");
     if (!peopleField) return;
 
     // Build updated assignees from the known assignee options
