@@ -97,8 +97,8 @@ export default function Header({
                     }
                   }
                   return Array.from(grouped.values()).map((ws) => (
-                    <div key={ws.workspaceId} className="group/ws">
-                      <div className="flex items-center justify-between px-3 py-1.5">
+                    <div key={ws.workspaceId}>
+                      <div className="group/ws flex items-center justify-between px-3 py-1.5 hover:bg-gray-50 transition-colors">
                         <span className="text-[10px] font-semibold uppercase tracking-wide text-muted">
                           {ws.workspaceName}
                         </span>
@@ -117,7 +117,7 @@ export default function Header({
                       {ws.lists.map((list) => (
                         <div
                           key={`${list.workspaceId}-${list.listId}`}
-                          className="group/item flex items-center justify-between px-3 py-1.5 text-xs"
+                          className="group/item flex items-center justify-between px-3 py-1.5 text-xs hover:bg-gray-50 transition-colors"
                         >
                           <span className="truncate">{list.listTitle}</span>
                           <button
