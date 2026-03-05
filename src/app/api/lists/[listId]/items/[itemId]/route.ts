@@ -31,12 +31,36 @@ export async function PATCH(
     );
   }
 
+  // Normalize cells: accept either an array (Slack native format) or a
+  // plain object like {"column_id": value} for convenience.
+  let normalizedCells: Array<Record<string, unknown>>;
+  if (Array.isArray(cells)) {
+    normalizedCells = cells;
+  } else if (cells && typeof cells === "object") {
+    normalizedCells = Object.entries(cells).map(([key, value]) => {
+      const cell: Record<string, unknown> = { column_id: key };
+      if (Array.isArray(value)) {
+        cell.select = value;
+      } else if (typeof value === "number") {
+        cell.number = value;
+      } else {
+        cell.value = String(value);
+      }
+      return cell;
+    });
+  } else {
+    return NextResponse.json(
+      { error: "cells must be an object or array" },
+      { status: 400 }
+    );
+  }
+
   try {
     const data = await updateListItem(
       workspace.userToken || workspace.botToken,
       listId,
       itemId,
-      cells
+      normalizedCells
     );
     return NextResponse.json(data);
   } catch (err) {
