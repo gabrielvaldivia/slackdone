@@ -256,6 +256,21 @@ export default function Board({ data, onRefresh }: BoardProps) {
 
   const hasActiveFilters = filterAssignees.size > 0 || filterClients.size > 0;
 
+  // Check if current filters differ from the active saved view
+  const filtersMatchActiveView = useMemo(() => {
+    if (!activeViewId) return false;
+    const view = savedViews.find((v) => v.id === activeViewId);
+    if (!view) return false;
+    const viewAssignees = new Set(view.assignees);
+    const viewClients = new Set(view.clients);
+    if (filterAssignees.size !== viewAssignees.size || filterClients.size !== viewClients.size) return false;
+    for (const id of filterAssignees) if (!viewAssignees.has(id)) return false;
+    for (const id of filterClients) if (!viewClients.has(id)) return false;
+    return true;
+  }, [activeViewId, savedViews, filterAssignees, filterClients]);
+
+  const showSaveView = hasActiveFilters && !filtersMatchActiveView;
+
   const handleSaveView = useCallback(() => {
     const name = viewName.trim();
     if (!name) return;
@@ -285,12 +300,6 @@ export default function Board({ data, onRefresh }: BoardProps) {
     saveViews(next);
     if (activeViewId === id) setActiveViewId(null);
     setViewMenuOpen(null);
-  };
-
-  const handleClearFilters = () => {
-    setFilterAssignees(new Set());
-    setFilterClients(new Set());
-    setActiveViewId(null);
   };
 
   // Close view context menu on outside click
@@ -901,31 +910,19 @@ export default function Board({ data, onRefresh }: BoardProps) {
             />
           )}
 
-          {/* Save view / Clear */}
-          {hasActiveFilters && !savingView && (
-            <>
-              <button
-                onClick={() => setSavingView(true)}
-                className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-600 transition-colors hover:bg-blue-100"
-              >
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-                  <polyline points="17 21 17 13 7 13 7 21" />
-                  <polyline points="7 3 7 8 15 8" />
-                </svg>
-                Save view
-              </button>
-              <button
-                onClick={handleClearFilters}
-                className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs text-gray-500 hover:text-gray-700"
-              >
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-                Clear
-              </button>
-            </>
+          {/* Save view */}
+          {showSaveView && !savingView && (
+            <button
+              onClick={() => setSavingView(true)}
+              className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-600 transition-colors hover:bg-blue-100"
+            >
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                <polyline points="17 21 17 13 7 13 7 21" />
+                <polyline points="7 3 7 8 15 8" />
+              </svg>
+              Save view
+            </button>
           )}
           {savingView && (
             <form
