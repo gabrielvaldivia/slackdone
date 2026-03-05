@@ -119,6 +119,7 @@ export default function Board({ data, onRefresh }: BoardProps) {
   const saveInputRef = useRef<HTMLInputElement>(null);
   const [viewMenuOpen, setViewMenuOpen] = useState<string | null>(null);
   const viewMenuRef = useRef<HTMLDivElement>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [draggingColumnId, setDraggingColumnId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -927,7 +928,8 @@ export default function Board({ data, onRefresh }: BoardProps) {
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-2 px-4 pt-3">
+      <div className="flex flex-col gap-2 px-4 pt-3">
+        <div className="flex flex-wrap items-center gap-2">
           {/* Search */}
           <div className="relative">
             <svg
@@ -963,6 +965,26 @@ export default function Board({ data, onRefresh }: BoardProps) {
               </button>
             )}
           </div>
+
+          {/* Filter toggle */}
+          <button
+            onClick={() => setFiltersOpen((v) => !v)}
+            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+              filtersOpen || hasActiveFilters
+                ? "bg-blue-100 text-blue-700"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            }`}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+            </svg>
+            Filter
+            {hasActiveFilters && !filtersOpen && (
+              <span className="ml-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 text-[9px] text-white">
+                {filterAssignees.size + filterClients.size}
+              </span>
+            )}
+          </button>
 
           {/* Saved view pills */}
           {savedViews.map((view) => (
@@ -1004,29 +1026,6 @@ export default function Board({ data, onRefresh }: BoardProps) {
               )}
             </div>
           ))}
-
-          {/* Separator between views and filters */}
-          {savedViews.length > 0 && (assigneeOptions.length > 0 || clientOptions.length > 0) && (
-            <div className="h-4 w-px bg-gray-300" />
-          )}
-
-          {/* Filter dropdowns */}
-          {assigneeOptions.length > 0 && (
-            <FilterDropdown
-              label="Assignee"
-              options={assigneeOptions}
-              selected={filterAssignees}
-              onChange={(v) => { setFilterAssignees(v); setActiveViewId(null); }}
-            />
-          )}
-          {clientOptions.length > 0 && (
-            <FilterDropdown
-              label="Client"
-              options={clientOptions}
-              selected={filterClients}
-              onChange={(v) => { setFilterClients(v); setActiveViewId(null); }}
-            />
-          )}
 
           {/* Save view */}
           {showSaveView && !savingView && (
@@ -1072,24 +1071,45 @@ export default function Board({ data, onRefresh }: BoardProps) {
               </button>
             </form>
           )}
-
-          {/* Hidden columns toggle */}
-          {hiddenCount > 0 && (
-            <button
-              onClick={() => setShowHidden((v) => !v)}
-              className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-200"
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                {showHidden ? (
-                  <><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></>
-                ) : (
-                  <><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" /><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" /><line x1="1" y1="1" x2="23" y2="23" /></>
-                )}
-              </svg>
-              {showHidden ? "Hide" : "Show"} {hiddenCount} hidden
-            </button>
-          )}
         </div>
+
+        {/* Collapsible filter row */}
+        {filtersOpen && (
+          <div className="flex flex-wrap items-center gap-2">
+            {assigneeOptions.length > 0 && (
+              <FilterDropdown
+                label="Assignee"
+                options={assigneeOptions}
+                selected={filterAssignees}
+                onChange={(v) => { setFilterAssignees(v); setActiveViewId(null); }}
+              />
+            )}
+            {clientOptions.length > 0 && (
+              <FilterDropdown
+                label="Client"
+                options={clientOptions}
+                selected={filterClients}
+                onChange={(v) => { setFilterClients(v); setActiveViewId(null); }}
+              />
+            )}
+            {hiddenCount > 0 && (
+              <button
+                onClick={() => setShowHidden((v) => !v)}
+                className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-200"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  {showHidden ? (
+                    <><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></>
+                  ) : (
+                    <><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" /><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" /><line x1="1" y1="1" x2="23" y2="23" /></>
+                  )}
+                </svg>
+                {showHidden ? "Hide" : "Show"} {hiddenCount} hidden
+              </button>
+            )}
+          </div>
+        )}
+      </div>
 
       <div className="flex flex-1 gap-4 overflow-x-auto p-4">
         {visibleColumns.map((column) => {
