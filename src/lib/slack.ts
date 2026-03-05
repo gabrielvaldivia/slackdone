@@ -49,12 +49,19 @@ export async function getListItemInfo(
 export async function createListItem(
   token: string,
   listId: string,
-  fields: Record<string, unknown>
+  fields: Record<string, unknown>,
+  cells?: Array<Record<string, unknown>>
 ) {
-  const data = await slackFetch("slackLists.items.create", token, {
+  const payload: Record<string, unknown> = {
     list_id: listId,
     item: { fields },
-  });
+  };
+  // If cells are provided, include them at the top level
+  // (same format as items.update — column_id + value/select)
+  if (cells && cells.length > 0) {
+    payload.cells = cells;
+  }
+  const data = await slackFetch("slackLists.items.create", token, payload);
   return data;
 }
 

@@ -502,36 +502,10 @@ export default function Board({ data, onRefresh }: BoardProps) {
     if (!targetList) return;
 
     try {
-      // Create the item (Slack ignores fields formats we've tried, so create blank)
-      const createRes = await fetch(`/api/lists/${targetList.listId}/items`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          workspaceId: targetList.workspaceId,
-          fields: {},
-        }),
-      });
-      if (!createRes.ok) throw new Error("Create failed");
-      const created = await createRes.json();
-      const newItemId = created.item?.id;
-      if (!newItemId) {
-        onRefresh();
-        return;
-      }
-
-      // Build update cells — title via PATCH works (same as rename)
-      const cells: Array<Record<string, unknown>> = [];
-
-      // Title — rich_text format (proven to work in rename)
-      cells.push({
-        column_id: "name",
-        value: JSON.stringify([
-          {
-            type: "rich_text_section",
-            elements: [{ type: "text", text: title }],
-          },
-        ]),
-      });
+      // Fetch schema first so we can set all fields during create
+      let statusOptId: string | null = null;
+      let clientOptValue: string | null = null;
+      let clientColKey: string | null = null;
 
       try {
         const schemaRes = await fetch(
@@ -545,10 +519,7 @@ export default function Board({ data, onRefresh }: BoardProps) {
             if (listData.statusColumn?.options) {
               for (const opt of listData.statusColumn.options) {
                 if (opt.name.toLowerCase().trim() === columnId) {
-                  cells.push({
-                    column_id: targetList.statusColumnId,
-                    select: [opt.id],
-                  });
+                  statusOptId = opt.id;
                   break;
                 }
               }
@@ -568,39 +539,59 @@ export default function Board({ data, onRefresh }: BoardProps) {
                 (o: { label: string }) => o.label === clientId
               );
               if (match) {
-                cells.push({
-                  column_id: clientCol.id,
-                  select: [match.value],
-                });
+                clientOptValue = match.value;
+                clientColKey = clientCol.key;
               }
             }
           }
         }
       } catch {
-        // proceed without extra fields
+        // proceed with title only
       }
 
-      // Update each cell individually so one failure doesn't block others
-      for (const cell of cells) {
-        try {
-          const updateRes = await fetch(
-            `/api/lists/${targetList.listId}/items/${newItemId}`,
-            {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                workspaceId: targetList.workspaceId,
-                cells: [cell],
-              }),
-            }
-          );
-          if (!updateRes.ok) {
-            const errData = await updateRes.json().catch(() => ({}));
-            console.error("Update cell failed:", cell.column_id, errData);
-          }
-        } catch {
-          console.error("Update cell error:", cell.column_id);
-        }
+      // Build cells for create — use the cells-based create approach
+      const cells: Array<Record<string, unknown>> = [];
+
+      // Title
+      cells.push({
+        column_id: "name",
+        value: JSON.stringify([
+          {
+            type: "rich_text_section",
+            elements: [{ type: "text", text: title }],
+          },
+        ]),
+      });
+
+      // Status
+      if (statusOptId && targetList.statusColumnId) {
+        cells.push({
+          column_id: targetList.statusColumnId,
+          select: [statusOptId],
+        });
+      }
+
+      // Client
+      if (clientOptValue && clientColKey) {
+        cells.push({
+          column_id: clientColKey,
+          select: [clientOptValue],
+        });
+      }
+
+      // Use items.create with cells instead of fields
+      const createRes = await fetch(`/api/lists/${targetList.listId}/items`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          workspaceId: targetList.workspaceId,
+          cells,
+        }),
+      });
+      if (!createRes.ok) {
+        const errData = await createRes.json().catch(() => ({}));
+        console.error("Create failed:", errData);
+        throw new Error("Create failed");
       }
 
       onRefresh();
