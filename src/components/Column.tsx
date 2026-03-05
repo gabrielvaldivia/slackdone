@@ -123,7 +123,7 @@ export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDe
           className="flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold text-white"
           style={{ backgroundColor: colors.header }}
         >
-          {column.items.length}
+          {column.items.length > 99 ? "99+" : column.items.length}
         </span>
         <span
           className="text-[10px] font-semibold uppercase tracking-wider text-center"
