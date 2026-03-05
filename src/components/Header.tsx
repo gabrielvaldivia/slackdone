@@ -104,10 +104,10 @@ export default function Header({
                         </span>
                         <button
                           onClick={() => onDisconnect(ws.workspaceId)}
-                          className="text-muted hover:text-red-600 transition-colors opacity-0 group-hover/ws:opacity-100"
+                          className="flex h-5 w-5 items-center justify-center text-muted hover:text-red-600 transition-colors opacity-0 group-hover/ws:opacity-100"
                           title="Disconnect workspace"
                         >
-                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M15 7h3a5 5 0 0 1 0 10h-3m-6 0H6a5 5 0 0 1 0-10h3" />
                             <line x1="8" y1="12" x2="16" y2="12" />
                             <line x1="2" y1="2" x2="22" y2="22" />
@@ -124,7 +124,7 @@ export default function Header({
                             onClick={(e) =>
                               handleRemoveList(list.workspaceId, list.listId, e)
                             }
-                            className="ml-2 shrink-0 text-muted hover:text-red-600 transition-colors opacity-0 group-hover/item:opacity-100"
+                            className="ml-2 shrink-0 flex h-5 w-5 items-center justify-center text-muted hover:text-red-600 transition-colors opacity-0 group-hover/item:opacity-100"
                           >
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <polyline points="3 6 5 6 21 6" />
