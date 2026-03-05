@@ -8,9 +8,11 @@ interface AddCardFormProps {
   onAdd: (title: string, assigneeIds: string[], clientId: string | null) => void;
   assigneeOptions?: FilterOption[];
   clientOptions?: FilterOption[];
+  defaultAssignees?: Set<string>;
+  defaultClient?: string | null;
 }
 
-export default function AddCardForm({ onAdd, assigneeOptions = [], clientOptions = [] }: AddCardFormProps) {
+export default function AddCardForm({ onAdd, assigneeOptions = [], clientOptions = [], defaultAssignees, defaultClient }: AddCardFormProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -18,6 +20,12 @@ export default function AddCardForm({ onAdd, assigneeOptions = [], clientOptions
   const [selectedClient, setSelectedClient] = useState<string | null>(null);
   const [assigneeDropdownOpen, setAssigneeDropdownOpen] = useState(false);
   const [clientDropdownOpen, setClientDropdownOpen] = useState(false);
+
+  const open = () => {
+    setSelectedAssignees(defaultAssignees ? new Set(defaultAssignees) : new Set());
+    setSelectedClient(defaultClient ?? null);
+    setIsOpen(true);
+  };
 
   const reset = () => {
     setTitle("");
@@ -31,7 +39,7 @@ export default function AddCardForm({ onAdd, assigneeOptions = [], clientOptions
   if (!isOpen) {
     return (
       <button
-        onClick={() => setIsOpen(true)}
+        onClick={open}
         className="w-full py-1 text-xs text-muted hover:text-foreground transition-colors text-left"
       >
         + Add item

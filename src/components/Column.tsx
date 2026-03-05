@@ -33,13 +33,15 @@ interface ColumnProps {
   clientColorMap?: Map<string, { bg: string; text: string }>;
   assigneeOptions?: FilterOption[];
   clientOptions?: FilterOption[];
+  defaultAssignees?: Set<string>;
+  defaultClient?: string | null;
   onColumnDragStart?: () => void;
   onColumnDragEnd?: () => void;
   onColumnDrop?: () => void;
   isColumnDragging?: boolean;
 }
 
-export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDeleteItem, onRenameItem, onCardClick, onHide, onMinimize, onExpand, minimized, onUnhide, clientColorMap, assigneeOptions, clientOptions, onColumnDragStart, onColumnDragEnd, onColumnDrop, isColumnDragging }: ColumnProps) {
+export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDeleteItem, onRenameItem, onCardClick, onHide, onMinimize, onExpand, minimized, onUnhide, clientColorMap, assigneeOptions, clientOptions, defaultAssignees, defaultClient, onColumnDragStart, onColumnDragEnd, onColumnDrop, isColumnDragging }: ColumnProps) {
   const [dragOver, setDragOver] = useState(false);
   const [columnDragOver, setColumnDragOver] = useState(false);
   const [dropIndex, setDropIndex] = useState<number | null>(null);
@@ -245,6 +247,8 @@ export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDe
           onAdd={(title, assigneeIds, clientId) => onAddItem(column.id, title, assigneeIds, clientId)}
           assigneeOptions={assigneeOptions}
           clientOptions={clientOptions}
+          defaultAssignees={defaultAssignees}
+          defaultClient={defaultClient}
         />
       </div>
     </div>

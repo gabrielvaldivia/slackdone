@@ -1048,6 +1048,8 @@ export default function Board({ data, onRefresh }: BoardProps) {
               clientColorMap={clientColorMap}
               assigneeOptions={assigneeOptions}
               clientOptions={clientOptions}
+              defaultAssignees={filterAssignees.size > 0 ? filterAssignees : undefined}
+              defaultClient={filterClients.size === 1 ? [...filterClients][0] : null}
               onColumnDragStart={() => handleColumnDragStart(column.id)}
               onColumnDragEnd={handleColumnDragEnd}
               onColumnDrop={() => handleColumnDrop(column.id)}
