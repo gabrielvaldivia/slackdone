@@ -205,6 +205,8 @@ export default function CardDetailModal({
           {fields.map((field) => {
             // Skip people/user fields shown above as assignees
             if (field.type === "people" || field.type === "user") return null;
+            // Skip internal completion field (handled by moving to Done column)
+            if (field.key === "todo_completed" || field.label === "TODO_COMPLETED") return null;
 
             const sf = schemaMap.get(field.columnId) || schemaByKey.get(field.key);
 
