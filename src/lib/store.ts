@@ -120,6 +120,25 @@ export async function getUserIdByApiKey(apiKey: string): Promise<string | null> 
   return snap.docs[0].id;
 }
 
+// Board preferences (column order, hidden, minimized)
+export interface BoardPreferences {
+  columnOrder?: string[];
+  hiddenColumns?: string[];
+  minimizedColumns?: string[];
+}
+
+export async function getBoardPreferences(userId: string): Promise<BoardPreferences | null> {
+  const db = getDb();
+  const snap = await getDoc(doc(db, "users", userId));
+  if (!snap.exists()) return null;
+  return snap.data().boardPreferences ?? null;
+}
+
+export async function updateBoardPreferences(userId: string, prefs: BoardPreferences) {
+  const db = getDb();
+  await updateDoc(doc(db, "users", userId), { boardPreferences: prefs });
+}
+
 // Legacy accessors for migration
 export async function getLegacyWorkspaces(): Promise<Workspace[]> {
   const db = getDb();

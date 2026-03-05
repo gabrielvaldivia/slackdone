@@ -27,10 +27,6 @@ function loadHidden(): Set<string> {
   }
 }
 
-function saveHidden(ids: Set<string>) {
-  localStorage.setItem(HIDDEN_KEY, JSON.stringify([...ids]));
-}
-
 function loadMinimized(): Set<string> {
   if (typeof window === "undefined") return new Set();
   try {
@@ -39,10 +35,6 @@ function loadMinimized(): Set<string> {
   } catch {
     return new Set();
   }
-}
-
-function saveMinimized(ids: Set<string>) {
-  localStorage.setItem(MINIMIZED_KEY, JSON.stringify([...ids]));
 }
 
 function loadColumnOrder(): string[] {
@@ -55,8 +47,20 @@ function loadColumnOrder(): string[] {
   }
 }
 
-function saveColumnOrder(ids: string[]) {
-  localStorage.setItem(ORDER_KEY, JSON.stringify(ids));
+// Save to both localStorage (fast) and backend (persistent)
+function saveBoardPreferences(columnOrder: string[], hiddenColumns: Set<string>, minimizedColumns: Set<string>) {
+  localStorage.setItem(ORDER_KEY, JSON.stringify(columnOrder));
+  localStorage.setItem(HIDDEN_KEY, JSON.stringify([...hiddenColumns]));
+  localStorage.setItem(MINIMIZED_KEY, JSON.stringify([...minimizedColumns]));
+  fetch("/api/preferences", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      columnOrder,
+      hiddenColumns: [...hiddenColumns],
+      minimizedColumns: [...minimizedColumns],
+    }),
+  }).catch(() => {});
 }
 
 const VIEWS_KEY = "slackdone:savedViews";
@@ -144,6 +148,29 @@ export default function Board({ data, onRefresh }: BoardProps) {
   useEffect(() => {
     setColumns(applyColumnOrder(data.columns, columnOrder));
   }, [data]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Load board preferences from backend on mount
+  useEffect(() => {
+    fetch("/api/preferences")
+      .then((res) => res.ok ? res.json() : null)
+      .then((prefs) => {
+        if (!prefs) return;
+        if (prefs.columnOrder?.length) {
+          setColumnOrder(prefs.columnOrder);
+          setColumns((prev) => applyColumnOrder(prev, prefs.columnOrder));
+          localStorage.setItem(ORDER_KEY, JSON.stringify(prefs.columnOrder));
+        }
+        if (prefs.hiddenColumns) {
+          setHiddenColumns(new Set(prefs.hiddenColumns));
+          localStorage.setItem(HIDDEN_KEY, JSON.stringify(prefs.hiddenColumns));
+        }
+        if (prefs.minimizedColumns) {
+          setMinimizedColumns(new Set(prefs.minimizedColumns));
+          localStorage.setItem(MINIMIZED_KEY, JSON.stringify(prefs.minimizedColumns));
+        }
+      })
+      .catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Collect all available card properties from items
   // "assignees" is a virtual property for people fields
@@ -303,11 +330,20 @@ export default function Board({ data, onRefresh }: BoardProps) {
     }));
   }, [columns, filterAssignees, filterClients, assigneeOptions, searchQuery]);
 
+  // Refs to track latest values for save calls inside setState callbacks
+  const columnOrderRef = useRef(columnOrder);
+  const hiddenColumnsRef = useRef(hiddenColumns);
+  const minimizedColumnsRef = useRef(minimizedColumns);
+  useEffect(() => { columnOrderRef.current = columnOrder; }, [columnOrder]);
+  useEffect(() => { hiddenColumnsRef.current = hiddenColumns; }, [hiddenColumns]);
+  useEffect(() => { minimizedColumnsRef.current = minimizedColumns; }, [minimizedColumns]);
+
   const hideColumn = (id: string) => {
     setHiddenColumns((prev) => {
       const next = new Set(prev);
       next.add(id);
-      saveHidden(next);
+      hiddenColumnsRef.current = next;
+      saveBoardPreferences(columnOrderRef.current, next, minimizedColumnsRef.current);
       return next;
     });
   };
@@ -316,7 +352,8 @@ export default function Board({ data, onRefresh }: BoardProps) {
     setHiddenColumns((prev) => {
       const next = new Set(prev);
       next.delete(id);
-      saveHidden(next);
+      hiddenColumnsRef.current = next;
+      saveBoardPreferences(columnOrderRef.current, next, minimizedColumnsRef.current);
       return next;
     });
   };
@@ -325,7 +362,8 @@ export default function Board({ data, onRefresh }: BoardProps) {
     setMinimizedColumns((prev) => {
       const next = new Set(prev);
       next.add(id);
-      saveMinimized(next);
+      minimizedColumnsRef.current = next;
+      saveBoardPreferences(columnOrderRef.current, hiddenColumnsRef.current, next);
       return next;
     });
   };
@@ -334,7 +372,8 @@ export default function Board({ data, onRefresh }: BoardProps) {
     setMinimizedColumns((prev) => {
       const next = new Set(prev);
       next.delete(id);
-      saveMinimized(next);
+      minimizedColumnsRef.current = next;
+      saveBoardPreferences(columnOrderRef.current, hiddenColumnsRef.current, next);
       return next;
     });
   };
@@ -1027,7 +1066,8 @@ export default function Board({ data, onRefresh }: BoardProps) {
       next.splice(toIdx, 0, moved);
       const newOrder = next.map((c) => c.id);
       setColumnOrder(newOrder);
-      saveColumnOrder(newOrder);
+      columnOrderRef.current = newOrder;
+      saveBoardPreferences(newOrder, hiddenColumnsRef.current, minimizedColumnsRef.current);
       return next;
     });
     setDraggingColumnId(null);
