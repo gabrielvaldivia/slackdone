@@ -520,11 +520,12 @@ export default function Board({ data, onRefresh }: BoardProps) {
         const nameCol = schema.find((c: { key: string }) => c.key === "name");
         nameColId = nameCol?.id || null;
 
-        // Status
+        // Status — columnId is the normalized column name (e.g. "to do")
+        // from the unified board, so match against opt.name lowercased
         if (targetList.statusColumnId && columnId !== "__none__" && columnId !== "no status") {
           if (listData.statusColumn?.options) {
             for (const opt of listData.statusColumn.options) {
-              if (opt.id === columnId) {
+              if (opt.name.toLowerCase().trim() === columnId) {
                 initialFields.push({
                   column_id: targetList.statusColumnId,
                   select: [opt.id],
