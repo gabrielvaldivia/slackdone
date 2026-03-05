@@ -237,7 +237,7 @@ export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDe
         </div>
       </div>
 
-      <div ref={listRef} className="flex flex-1 flex-col gap-2 overflow-y-auto px-2 pb-2">
+      <div ref={listRef} className="flex flex-1 flex-col gap-2 overflow-y-auto px-2 pt-1 pb-2">
         {topFormOpen && (
           <AddCardForm
             onAdd={(title, assigneeIds, clientId) => {
