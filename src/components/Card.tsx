@@ -83,11 +83,11 @@ export default function Card({ item, columnId, clientColorMap, visibleProperties
     return visibleProperties.has(f.key);
   });
 
-  // Show workspace name when item has no valid client field value
-  const hasValidClient = visibleFields.some(
+  // Show workspace name as client fallback when item has no valid client field
+  const hasExplicitClient = (item.fields || []).some(
     (f) => f.label.toLowerCase() === "client" && f.displayValue && !/^Opt[A-Z0-9]+$/.test(f.displayValue)
   );
-  const workspaceFallback = !hasValidClient && item.workspaceName ? item.workspaceName : null;
+  const workspaceFallback = !hasExplicitClient ? (item.workspaceName || null) : null;
 
   const hasFooter = (showAssignees && assignees.length > 0) || visibleFields.length > 0 || !!workspaceFallback;
 
