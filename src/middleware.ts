@@ -7,6 +7,8 @@ const PUBLIC_PATHS = [
   "/api/auth/login/callback",
   "/api/auth/install",
   "/api/auth/callback",
+  "/api/health",
+  "/docs",
 ];
 
 function isPublic(pathname: string): boolean {
@@ -19,6 +21,11 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (isPublic(pathname)) {
+    return NextResponse.next();
+  }
+
+  // Allow API key auth to pass through to route handlers
+  if (pathname.startsWith("/api/") && request.headers.get("x-api-key")) {
     return NextResponse.next();
   }
 

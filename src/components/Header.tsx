@@ -107,7 +107,7 @@ export default function Header({
             <button className="rounded-md border border-border px-3 py-1 text-xs hover:bg-gray-50 transition-colors">
               {workspaces.length} workspace{workspaces.length !== 1 ? "s" : ""}
             </button>
-            <div className="absolute right-0 top-full z-10 mt-1 hidden group-hover:block min-w-[180px] rounded-md border border-border bg-white shadow-md">
+            <div className="absolute right-0 top-full z-10 hidden group-hover:block min-w-[180px] pt-1"><div className="rounded-md border border-border bg-white shadow-md">
               {workspaces.map((w) => (
                 <div
                   key={w.id}
@@ -129,6 +129,7 @@ export default function Header({
                 >
                   + Add workspace
                 </button>
+              </div>
               </div>
             </div>
           </div>
@@ -163,13 +164,21 @@ export default function Header({
               )}
               <span className="max-w-[100px] truncate">{user.name}</span>
             </button>
-            <div className="absolute right-0 top-full z-10 mt-1 hidden group-hover:block min-w-[120px] rounded-md border border-border bg-white shadow-md">
-              <button
-                onClick={onLogout}
-                className="w-full px-3 py-2 text-xs text-left hover:bg-gray-50 text-red-600"
-              >
-                Sign out
-              </button>
+            <div className="absolute right-0 top-full z-10 hidden group-hover:block min-w-[120px] pt-1">
+              <div className="rounded-md border border-border bg-white shadow-md">
+                <a
+                  href="/docs"
+                  className="block w-full px-3 py-2 text-xs text-left hover:bg-gray-50"
+                >
+                  API Docs
+                </a>
+                <button
+                  onClick={onLogout}
+                  className="w-full px-3 py-2 text-xs text-left hover:bg-gray-50 text-red-600"
+                >
+                  Sign out
+                </button>
+              </div>
             </div>
           </div>
         )}

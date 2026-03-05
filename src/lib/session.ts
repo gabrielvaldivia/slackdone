@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { getUserIdByApiKey } from "./store";
 
 export interface Session {
   userId: string;
@@ -95,6 +96,24 @@ export async function getSession(cookieValue: string): Promise<Session | null> {
 export async function getSessionFromRequest(
   request: NextRequest
 ): Promise<Session | null> {
+  // API key auth for machine-to-machine access
+  const apiKey = request.headers.get("x-api-key");
+  if (apiKey) {
+    // Env-var fallback (backwards compat)
+    const envKey = process.env.SLACKDONE_API_KEY;
+    if (envKey && apiKey === envKey) {
+      const userId = process.env.SLACKDONE_USER_ID;
+      if (userId) {
+        return { userId, name: "API", avatar: "", exp: Math.floor(Date.now() / 1000) + 86400 };
+      }
+    }
+    // Firestore lookup for self-serve keys
+    const userId = await getUserIdByApiKey(apiKey);
+    if (userId) {
+      return { userId, name: "API", avatar: "", exp: Math.floor(Date.now() / 1000) + 86400 };
+    }
+  }
+
   const cookie = request.cookies.get(COOKIE_NAME);
   if (!cookie?.value) return null;
   return getSession(cookie.value);

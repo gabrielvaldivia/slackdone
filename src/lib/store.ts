@@ -7,6 +7,10 @@ import {
   getDoc,
   setDoc,
   deleteDoc,
+  updateDoc,
+  deleteField,
+  query,
+  where,
 } from "firebase/firestore";
 import { Workspace, SavedList, User } from "./types";
 
@@ -88,6 +92,32 @@ export async function addSavedList(userId: string, workspaceId: string, list: Sa
 export async function removeSavedList(userId: string, workspaceId: string, listId: string) {
   const db = getDb();
   await deleteDoc(doc(db, savedListsPath(userId, workspaceId), listId));
+}
+
+// API key management
+export async function setApiKey(userId: string, key: string) {
+  const db = getDb();
+  await updateDoc(doc(db, "users", userId), { apiKey: key });
+}
+
+export async function getApiKey(userId: string): Promise<string | null> {
+  const db = getDb();
+  const snap = await getDoc(doc(db, "users", userId));
+  if (!snap.exists()) return null;
+  return snap.data().apiKey ?? null;
+}
+
+export async function deleteApiKey(userId: string) {
+  const db = getDb();
+  await updateDoc(doc(db, "users", userId), { apiKey: deleteField() });
+}
+
+export async function getUserIdByApiKey(apiKey: string): Promise<string | null> {
+  const db = getDb();
+  const q = query(collection(db, "users"), where("apiKey", "==", apiKey));
+  const snap = await getDocs(q);
+  if (snap.empty) return null;
+  return snap.docs[0].id;
 }
 
 // Legacy accessors for migration
