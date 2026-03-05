@@ -153,9 +153,9 @@ function TextAreaField({ initialValue, onUpdate }: { initialValue: string; onUpd
   return (
     <button
       onClick={startEditing}
-      className="w-full rounded-md bg-secondary px-3 py-2 text-left text-sm hover:bg-accent transition-colors cursor-text"
+      className="w-full overflow-hidden rounded-md bg-secondary px-3 py-2 text-left text-sm hover:bg-accent transition-colors cursor-text"
     >
-      <div className="prose prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-headings:my-2 prose-pre:my-1 prose-blockquote:my-1">
+      <div className="prose prose-sm max-w-none break-words prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-headings:my-2 prose-pre:my-1 prose-blockquote:my-1 prose-a:break-all">
         <ReactMarkdown remarkPlugins={[remarkGfm]}>{value}</ReactMarkdown>
       </div>
     </button>
