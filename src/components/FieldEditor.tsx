@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { BoardItemField, SchemaField } from "@/lib/types";
 import {
   Select,
@@ -104,21 +106,58 @@ export default function FieldEditor({ field, schema, onUpdate }: FieldEditorProp
 
 function TextAreaField({ initialValue, onUpdate }: { initialValue: string; onUpdate: (value: unknown) => void }) {
   const [value, setValue] = useState(initialValue);
+  const [editing, setEditing] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleBlur = () => {
+    setEditing(false);
     if (value !== initialValue) {
       onUpdate(value);
     }
   };
 
+  const startEditing = () => {
+    setEditing(true);
+    requestAnimationFrame(() => {
+      textareaRef.current?.focus();
+      const len = textareaRef.current?.value.length ?? 0;
+      textareaRef.current?.setSelectionRange(len, len);
+    });
+  };
+
+  if (editing) {
+    return (
+      <Textarea
+        ref={textareaRef}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={handleBlur}
+        rows={5}
+        placeholder="Add notes... (Markdown supported)"
+        className="resize-y font-mono text-sm"
+      />
+    );
+  }
+
+  if (!value.trim()) {
+    return (
+      <button
+        onClick={startEditing}
+        className="w-full rounded-md border border-dashed border-border px-3 py-2 text-left text-sm text-muted-foreground hover:bg-accent transition-colors"
+      >
+        Add notes...
+      </button>
+    );
+  }
+
   return (
-    <Textarea
-      value={value}
-      onChange={(e) => setValue(e.target.value)}
-      onBlur={handleBlur}
-      rows={3}
-      placeholder="Add notes..."
-      className="resize-y"
-    />
+    <button
+      onClick={startEditing}
+      className="w-full rounded-md bg-secondary px-3 py-2 text-left text-sm hover:bg-accent transition-colors cursor-text"
+    >
+      <div className="prose prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-headings:my-2 prose-pre:my-1 prose-blockquote:my-1">
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>{value}</ReactMarkdown>
+      </div>
+    </button>
   );
 }
