@@ -79,11 +79,43 @@ export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDe
   if (minimized) {
     return (
       <div
-        className="flex w-16 shrink-0 flex-col items-center rounded-xl py-3 gap-2 cursor-pointer group"
+        className={`flex w-16 shrink-0 flex-col items-center rounded-xl py-3 gap-2 cursor-pointer group transition-colors ${
+          dragOver ? "ring-2 ring-blue-300" : ""
+        }`}
         style={{ backgroundColor: colors.bg }}
         onClick={() => {
           if (onUnhide) onUnhide();
           else if (onExpand) onExpand();
+        }}
+        onDragEnter={(e) => {
+          e.preventDefault();
+          if (!e.dataTransfer.types.includes("application/column-drag")) {
+            dragCounter.current++;
+            setDragOver(true);
+          }
+        }}
+        onDragOver={(e) => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "move";
+        }}
+        onDragLeave={(e) => {
+          if (!e.dataTransfer.types.includes("application/column-drag")) {
+            dragCounter.current--;
+            if (dragCounter.current === 0) setDragOver(false);
+          }
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          if (!e.dataTransfer.types.includes("application/column-drag")) {
+            dragCounter.current = 0;
+            setDragOver(false);
+            try {
+              const data = JSON.parse(e.dataTransfer.getData("text/plain"));
+              onDrop(data.itemId, data.sourceColumnId, column.id);
+            } catch {
+              // ignore invalid drag data
+            }
+          }
         }}
         title={onUnhide ? "Click to unhide" : "Click to expand"}
       >
