@@ -39,7 +39,20 @@ export async function PATCH(
   } else if (cells && typeof cells === "object") {
     normalizedCells = Object.entries(cells).map(([key, value]) => {
       const cell: Record<string, unknown> = { column_id: key };
-      if (Array.isArray(value)) {
+      if (
+        value &&
+        typeof value === "object" &&
+        !Array.isArray(value)
+      ) {
+        // Object wrapper: pass known type keys through directly
+        // e.g. {"user": ["U07..."]} or {"select": ["Opt..."]}
+        const obj = value as Record<string, unknown>;
+        for (const k of ["user", "select", "date", "number", "value", "rich_text"]) {
+          if (k in obj) {
+            cell[k] = obj[k];
+          }
+        }
+      } else if (Array.isArray(value)) {
         cell.select = value;
       } else if (typeof value === "number") {
         cell.number = value;

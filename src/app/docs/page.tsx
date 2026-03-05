@@ -330,13 +330,14 @@ export default function DocsPage() {
               <Endpoint
                 method="PATCH"
                 path="/api/lists/[listId]/items/[itemId]"
-                description="Updates an existing item. Send workspaceId and cells in the request body. Keys are column IDs (from schema). Values: string for text, number for numbers, array of option IDs for selects."
+                description="Updates an existing item. Send workspaceId and cells in the request body. Keys are column IDs (from schema). Values: string for text, number for numbers, array of option IDs for selects, {&quot;user&quot;: [&quot;U...&quot;]} for user/people columns."
                 example={`// Request body:
 {
   "workspaceId": "ws-id",
   "cells": {
     "Col091X...": "some text",
-    "ColABC...": ["OptD93W9OW9"]
+    "ColABC...": ["OptD93W9OW9"],
+    "ColUSER...": {"user": ["U07QKUY057H"]}
   }
 }`}
               />
