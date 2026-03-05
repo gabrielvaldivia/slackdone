@@ -41,7 +41,8 @@ export function getClientName(item: BoardItem): string {
   const clientField = item.fields?.find(
     (f) => f.label.toLowerCase() === "client"
   );
-  if (clientField?.displayValue) return clientField.displayValue;
+  const val = clientField?.displayValue;
+  if (val && !/^Opt[A-Z0-9]+$/.test(val)) return val;
   return item.workspaceName || "";
 }
 
