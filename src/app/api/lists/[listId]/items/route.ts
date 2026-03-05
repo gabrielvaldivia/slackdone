@@ -14,7 +14,7 @@ export async function POST(
 
   const { listId } = await params;
   const body = await request.json();
-  const { workspaceId, fields, cells } = body;
+  const { workspaceId, fields } = body;
 
   if (!workspaceId) {
     return NextResponse.json(
@@ -32,8 +32,7 @@ export async function POST(
   }
 
   try {
-    const token = workspace.userToken || workspace.botToken;
-    const data = await createListItem(token, listId, fields || {}, cells);
+    const data = await createListItem(workspace.userToken || workspace.botToken, listId, fields);
     return NextResponse.json(data);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

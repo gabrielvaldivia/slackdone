@@ -501,99 +501,101 @@ export default function Board({ data, onRefresh }: BoardProps) {
     }
     if (!targetList) return;
 
+    const fields: Record<string, unknown> = { title };
+
+    // Fetch the list schema to resolve column IDs for status, assignee, and client
     try {
-      // Fetch schema first so we can set all fields during create
-      let statusOptId: string | null = null;
-      let clientOptValue: string | null = null;
-      let clientColKey: string | null = null;
+      const res = await fetch(
+        `/api/lists/${targetList.listId}?workspaceId=${targetList.workspaceId}`
+      );
+      if (res.ok) {
+        const listData = await res.json();
+        const schema = listData.schema || [];
 
-      try {
-        const schemaRes = await fetch(
-          `/api/lists/${targetList.listId}?workspaceId=${targetList.workspaceId}`
-        );
-        if (schemaRes.ok) {
-          const listData = await schemaRes.json();
-
-          // Status
-          if (targetList.statusColumnId && columnId !== "__none__" && columnId !== "no status") {
-            if (listData.statusColumn?.options) {
-              for (const opt of listData.statusColumn.options) {
-                if (opt.name.toLowerCase().trim() === columnId) {
-                  statusOptId = opt.id;
-                  break;
-                }
-              }
-            }
-          }
-
-          // Client
-          const schema = listData.schema || [];
-          if (clientId) {
-            const clientCol = schema.find(
-              (c: { type: string; label: string }) =>
-                (c.type === "select" || c.type === "status") &&
-                c.label.toLowerCase() === "client"
-            );
-            if (clientCol?.options) {
-              const match = clientCol.options.find(
-                (o: { label: string }) => o.label === clientId
-              );
-              if (match) {
-                clientOptValue = match.value;
-                clientColKey = clientCol.key;
+        // Status field
+        if (targetList.statusColumnId && columnId !== "__none__" && columnId !== "no status") {
+          if (listData.statusColumn?.options) {
+            for (const opt of listData.statusColumn.options) {
+              if (opt.name.toLowerCase().trim() === columnId) {
+                fields[targetList.statusColumnId] = { id: opt.id };
+                break;
               }
             }
           }
         }
-      } catch {
-        // proceed with title only
+
+        // Assignee field — find first people/user column in schema
+        if (assigneeIds.length > 0) {
+          const peopleCol = schema.find(
+            (c: { type: string }) => c.type === "people" || c.type === "user"
+          );
+          if (peopleCol) {
+            // Build a set of all user IDs that belong to the target workspace
+            const workspaceUserIds = new Set<string>();
+            for (const col of columns) {
+              for (const item of col.items) {
+                if (item.sourceWorkspaceId === targetList.workspaceId) {
+                  for (const a of item.assignees || []) {
+                    workspaceUserIds.add(a.id);
+                  }
+                }
+              }
+            }
+
+            // For each selected assignee, pick the user ID that exists in this workspace
+            const resolvedIds: string[] = [];
+            for (const selectedId of assigneeIds) {
+              const opt = assigneeOptions.find((o) => o.id === selectedId);
+              if (opt?.ids) {
+                const match = opt.ids.find((uid) => workspaceUserIds.has(uid));
+                if (match) resolvedIds.push(match);
+                else resolvedIds.push(selectedId); // fallback
+              } else {
+                resolvedIds.push(selectedId);
+              }
+            }
+            fields[peopleCol.id] = resolvedIds;
+          }
+        }
+
+        // Client field — find select column labeled "client" in schema
+        if (clientId) {
+          const clientCol = schema.find(
+            (c: { type: string; label: string }) =>
+              (c.type === "select" || c.type === "status") &&
+              c.label.toLowerCase() === "client"
+          );
+          if (clientCol?.options) {
+            const match = clientCol.options.find(
+              (o: { label: string }) => o.label === clientId
+            );
+            if (match) {
+              fields[clientCol.id] = { id: match.value };
+            }
+          }
+        }
       }
+    } catch {
+      // ignore, create with what we have
+    }
 
-      // Build cells for create — use the cells-based create approach
-      const cells: Array<Record<string, unknown>> = [];
+    console.log("Creating item with fields:", JSON.stringify(fields));
 
-      // Title
-      cells.push({
-        column_id: "name",
-        value: JSON.stringify([
-          {
-            type: "rich_text_section",
-            elements: [{ type: "text", text: title }],
-          },
-        ]),
-      });
-
-      // Status
-      if (statusOptId && targetList.statusColumnId) {
-        cells.push({
-          column_id: targetList.statusColumnId,
-          select: [statusOptId],
-        });
-      }
-
-      // Client
-      if (clientOptValue && clientColKey) {
-        cells.push({
-          column_id: clientColKey,
-          select: [clientOptValue],
-        });
-      }
-
-      // Use items.create with cells instead of fields
-      const createRes = await fetch(`/api/lists/${targetList.listId}/items`, {
+    try {
+      const res = await fetch(`/api/lists/${targetList.listId}/items`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           workspaceId: targetList.workspaceId,
-          cells,
+          fields,
         }),
       });
-      if (!createRes.ok) {
-        const errData = await createRes.json().catch(() => ({}));
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
         console.error("Create failed:", errData);
         throw new Error("Create failed");
       }
-
       onRefresh();
     } catch {
       setError("Failed to create item.");
