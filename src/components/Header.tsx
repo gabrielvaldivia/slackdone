@@ -96,8 +96,8 @@ export default function Header({
                       grouped.set(list.workspaceId, { workspaceId: list.workspaceId, workspaceName: list.workspaceName, lists: [list] });
                     }
                   }
-                  return Array.from(grouped.values()).map((ws) => (
-                    <div key={ws.workspaceId}>
+                  return Array.from(grouped.values()).map((ws, i) => (
+                    <div key={ws.workspaceId} className={i > 0 ? "mt-2" : ""}>
                       <div className="group/ws flex items-center justify-between px-3 py-1.5 hover:bg-gray-50 transition-colors">
                         <span className="text-[10px] font-semibold uppercase tracking-wide text-muted">
                           {ws.workspaceName}
