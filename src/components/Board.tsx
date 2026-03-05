@@ -1030,112 +1030,9 @@ export default function Board({ data, onRefresh }: BoardProps) {
       )}
 
       <div className="flex flex-col gap-2 px-4 pt-3">
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Search */}
-          <div className="relative">
-            <svg
-              width="12"
-              height="12"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400"
-            >
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search..."
-              className="h-7 w-44 rounded-full border border-gray-200 bg-white pl-8 pr-3 text-xs text-gray-700 placeholder-gray-400 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery("")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              >
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
-            )}
-          </div>
-
-          {/* Filter toggle */}
-          <button
-            onClick={() => setFiltersOpen((v) => !v)}
-            className={`inline-flex items-center gap-1.5 rounded-full pl-3 py-1 text-xs font-medium transition-colors ${
-              hasActiveFilters && !filtersOpen ? "pr-1.5" : "pr-3"
-            } ${
-              filtersOpen || hasActiveFilters
-                ? "bg-blue-100 text-blue-700"
-                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-            }`}
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="4" y1="6" x2="20" y2="6" />
-              <line x1="6" y1="12" x2="18" y2="12" />
-              <line x1="8" y1="18" x2="16" y2="18" />
-            </svg>
-            Filter
-            {hasActiveFilters && !filtersOpen && (
-              <span className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 text-[9px] text-white">
-                {filterAssignees.size + filterClients.size}
-              </span>
-            )}
-          </button>
-
-          {/* Properties toggle */}
-          <div className="relative" ref={propsRef}>
-            <button
-              onClick={() => setPropsOpen((v) => !v)}
-              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                propsOpen
-                  ? "bg-blue-100 text-blue-700"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="8" y1="6" x2="21" y2="6" />
-                <line x1="8" y1="12" x2="21" y2="12" />
-                <line x1="8" y1="18" x2="21" y2="18" />
-                <line x1="3" y1="6" x2="3.01" y2="6" />
-                <line x1="3" y1="12" x2="3.01" y2="12" />
-                <line x1="3" y1="18" x2="3.01" y2="18" />
-              </svg>
-              Properties
-            </button>
-            {propsOpen && (
-              <div className="absolute left-0 top-full z-50 mt-1 w-56 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
-                {availableCardProps.map((prop) => (
-                  <label
-                    key={prop.key}
-                    className="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-sm hover:bg-gray-50"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={effectiveCardProps.has(prop.key)}
-                      onChange={() => toggleCardProp(prop.key)}
-                      className="h-3.5 w-3.5 rounded border-gray-300 text-blue-600"
-                    />
-                    <span className="truncate">{prop.label}</span>
-                    <span className="ml-auto text-[10px] text-gray-400">{prop.type}</span>
-                  </label>
-                ))}
-                {availableCardProps.length === 0 && (
-                  <div className="px-3 py-2 text-xs text-gray-400">No properties available</div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Saved view pills */}
+        <div className="flex items-center gap-2">
+          {/* Left: Saved view pills */}
+          <div className="flex flex-wrap items-center gap-2">
           {savedViews.map((view) => (
             <div key={view.id} className="relative" ref={viewMenuOpen === view.id ? viewMenuRef : undefined}>
               <button
@@ -1220,6 +1117,114 @@ export default function Board({ data, onRefresh }: BoardProps) {
               </button>
             </form>
           )}
+          </div>
+
+          {/* Right: Search, Filter, Properties */}
+          <div className="ml-auto flex items-center gap-2">
+            {/* Search */}
+            <div className="relative">
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400"
+              >
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search..."
+                className="h-7 w-44 rounded-full border border-gray-200 bg-white pl-8 pr-3 text-xs text-gray-700 placeholder-gray-400 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              )}
+            </div>
+
+            {/* Filter toggle */}
+            <button
+              onClick={() => setFiltersOpen((v) => !v)}
+              className={`inline-flex items-center gap-1.5 rounded-full pl-3 py-1 text-xs font-medium transition-colors ${
+                hasActiveFilters && !filtersOpen ? "pr-1.5" : "pr-3"
+              } ${
+                filtersOpen || hasActiveFilters
+                  ? "bg-blue-100 text-blue-700"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="4" y1="6" x2="20" y2="6" />
+                <line x1="6" y1="12" x2="18" y2="12" />
+                <line x1="8" y1="18" x2="16" y2="18" />
+              </svg>
+              Filter
+              {hasActiveFilters && !filtersOpen && (
+                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 text-[9px] text-white">
+                  {filterAssignees.size + filterClients.size}
+                </span>
+              )}
+            </button>
+
+            {/* Properties toggle */}
+            <div className="relative" ref={propsRef}>
+              <button
+                onClick={() => setPropsOpen((v) => !v)}
+                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                  propsOpen
+                    ? "bg-blue-100 text-blue-700"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="8" y1="6" x2="21" y2="6" />
+                  <line x1="8" y1="12" x2="21" y2="12" />
+                  <line x1="8" y1="18" x2="21" y2="18" />
+                  <line x1="3" y1="6" x2="3.01" y2="6" />
+                  <line x1="3" y1="12" x2="3.01" y2="12" />
+                  <line x1="3" y1="18" x2="3.01" y2="18" />
+                </svg>
+                Properties
+              </button>
+              {propsOpen && (
+                <div className="absolute right-0 top-full z-50 mt-1 w-56 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                  {availableCardProps.map((prop) => (
+                    <label
+                      key={prop.key}
+                      className="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-sm hover:bg-gray-50"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={effectiveCardProps.has(prop.key)}
+                        onChange={() => toggleCardProp(prop.key)}
+                        className="h-3.5 w-3.5 rounded border-gray-300 text-blue-600"
+                      />
+                      <span className="truncate">{prop.label}</span>
+                      <span className="ml-auto text-[10px] text-gray-400">{prop.type}</span>
+                    </label>
+                  ))}
+                  {availableCardProps.length === 0 && (
+                    <div className="px-3 py-2 text-xs text-gray-400">No properties available</div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Collapsible filter row */}
