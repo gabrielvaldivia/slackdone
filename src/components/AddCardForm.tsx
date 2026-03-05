@@ -10,14 +10,20 @@ interface AddCardFormProps {
   clientOptions?: FilterOption[];
   defaultAssignees?: Set<string>;
   defaultClient?: string | null;
+  autoOpen?: boolean;
+  onCancel?: () => void;
 }
 
-export default function AddCardForm({ onAdd, assigneeOptions = [], clientOptions = [], defaultAssignees, defaultClient }: AddCardFormProps) {
-  const [isOpen, setIsOpen] = useState(false);
+export default function AddCardForm({ onAdd, assigneeOptions = [], clientOptions = [], defaultAssignees, defaultClient, autoOpen, onCancel }: AddCardFormProps) {
+  const [isOpen, setIsOpen] = useState(autoOpen ?? false);
   const [title, setTitle] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [selectedAssignees, setSelectedAssignees] = useState<Set<string>>(new Set());
-  const [selectedClient, setSelectedClient] = useState<string | null>(null);
+  const [selectedAssignees, setSelectedAssignees] = useState<Set<string>>(
+    autoOpen && defaultAssignees ? new Set(defaultAssignees) : new Set()
+  );
+  const [selectedClient, setSelectedClient] = useState<string | null>(
+    autoOpen && defaultClient ? defaultClient : null
+  );
   const [assigneeDropdownOpen, setAssigneeDropdownOpen] = useState(false);
   const [clientDropdownOpen, setClientDropdownOpen] = useState(false);
 
@@ -34,9 +40,11 @@ export default function AddCardForm({ onAdd, assigneeOptions = [], clientOptions
     setIsOpen(false);
     setAssigneeDropdownOpen(false);
     setClientDropdownOpen(false);
+    onCancel?.();
   };
 
   if (!isOpen) {
+    if (autoOpen) return null;
     return (
       <button
         onClick={open}

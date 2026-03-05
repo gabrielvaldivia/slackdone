@@ -46,6 +46,7 @@ export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDe
   const [columnDragOver, setColumnDragOver] = useState(false);
   const [dropIndex, setDropIndex] = useState<number | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [topFormOpen, setTopFormOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const dragCounter = useRef(0);
   const colDragCounter = useRef(0);
@@ -176,6 +177,17 @@ export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDe
           {column.name}
           <span className="text-white/70">{column.items.length}</span>
         </span>
+        <div className="flex items-center gap-0.5">
+          <button
+            onClick={() => setTopFormOpen(true)}
+            className="rounded p-1 text-gray-400 opacity-0 transition-opacity hover:text-gray-600 group-hover/col:opacity-100"
+            title="Add item"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+          </button>
         {(onHide || onMinimize) && (
           <div className="relative" ref={menuRef}>
             <button
@@ -222,9 +234,24 @@ export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDe
             )}
           </div>
         )}
+        </div>
       </div>
 
       <div ref={listRef} className="flex flex-1 flex-col gap-2 overflow-y-auto px-2 pb-2">
+        {topFormOpen && (
+          <AddCardForm
+            onAdd={(title, assigneeIds, clientId) => {
+              onAddItem(column.id, title, assigneeIds, clientId);
+              setTopFormOpen(false);
+            }}
+            assigneeOptions={assigneeOptions}
+            clientOptions={clientOptions}
+            defaultAssignees={defaultAssignees}
+            defaultClient={defaultClient}
+            autoOpen
+            onCancel={() => setTopFormOpen(false)}
+          />
+        )}
         {column.items.map((item, i) => (
           <div key={item.id}>
             {dropIndex === i && dragOver && (
