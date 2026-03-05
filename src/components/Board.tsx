@@ -501,7 +501,7 @@ export default function Board({ data, onRefresh }: BoardProps) {
     }
     if (!targetList) return;
 
-    const fields: Record<string, unknown> = { title };
+    const fields: Record<string, unknown> = { name: title };
 
     // Fetch the list schema to resolve column IDs for status, assignee, and client
     try {
@@ -511,22 +511,22 @@ export default function Board({ data, onRefresh }: BoardProps) {
       if (res.ok) {
         const listData = await res.json();
 
-        // Status field
-        if (targetList.statusColumnId && columnId !== "__none__" && columnId !== "no status") {
+        // Status field — use column key (not ID) for items.create
+        if (targetList.statusColumnKey && columnId !== "__none__" && columnId !== "no status") {
           if (listData.statusColumn?.options) {
             for (const opt of listData.statusColumn.options) {
               if (opt.name.toLowerCase().trim() === columnId) {
-                fields[targetList.statusColumnId] = { id: opt.id };
+                fields[targetList.statusColumnKey] = [opt.id];
                 break;
               }
             }
           }
         }
 
-        // Assignee field — find first people/user column
-        // Resolve selected option IDs to the correct user IDs for this workspace
-        if (assigneeIds.length > 0 && listData.columns) {
-          const peopleCol = listData.columns.find(
+        // Assignee field — find first people/user column in schema
+        const schema = listData.schema || [];
+        if (assigneeIds.length > 0) {
+          const peopleCol = schema.find(
             (c: { type: string }) => c.type === "people" || c.type === "user"
           );
           if (peopleCol) {
@@ -554,23 +554,23 @@ export default function Board({ data, onRefresh }: BoardProps) {
                 resolvedIds.push(selectedId);
               }
             }
-            fields[peopleCol.id] = resolvedIds;
+            fields[peopleCol.key] = resolvedIds;
           }
         }
 
-        // Client field — find select column labeled "client"
-        if (clientId && listData.columns) {
-          const clientCol = listData.columns.find(
-            (c: { type: string; name: string }) =>
+        // Client field — find select column labeled "client" in schema
+        if (clientId) {
+          const clientCol = schema.find(
+            (c: { type: string; label: string }) =>
               (c.type === "select" || c.type === "status") &&
-              c.name.toLowerCase() === "client"
+              c.label.toLowerCase() === "client"
           );
           if (clientCol?.options) {
             const match = clientCol.options.find(
-              (o: { name: string }) => o.name === clientId
+              (o: { label: string }) => o.label === clientId
             );
             if (match) {
-              fields[clientCol.id] = { id: match.id };
+              fields[clientCol.key] = [match.value];
             }
           }
         }
