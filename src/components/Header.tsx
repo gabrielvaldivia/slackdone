@@ -56,9 +56,11 @@ export default function Header({
   const addListRef = useRef<HTMLInputElement>(null);
   const helpRef = useRef<HTMLButtonElement>(null);
   const helpPopoverRef = useRef<HTMLDivElement>(null);
+  const [devToolsHidden, setDevToolsHidden] = useState(true);
   const [isElectron, setIsElectron] = useState(false);
   useEffect(() => {
     if ((window as unknown as Record<string, unknown>).__ELECTRON__ === true) setIsElectron(true);
+    if (process.env.NODE_ENV === "development") document.body.classList.add("hide-dev-tools");
   }, []);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
@@ -227,24 +229,30 @@ export default function Header({
                   )}
                   {process.env.NODE_ENV === "development" && (
                     <button
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         document.body.classList.toggle("hide-dev-tools");
-                        setUserMenuOpen(false);
+                        setDevToolsHidden((v) => !v);
                       }}
-                      className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-left hover:bg-gray-50 whitespace-nowrap"
+                      className="flex items-center justify-between w-full px-3 py-1.5 text-xs text-left hover:bg-gray-50 whitespace-nowrap"
                     >
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <line x1="4" y1="21" x2="4" y2="14" />
-                        <line x1="4" y1="10" x2="4" y2="3" />
-                        <line x1="12" y1="21" x2="12" y2="12" />
-                        <line x1="12" y1="8" x2="12" y2="3" />
-                        <line x1="20" y1="21" x2="20" y2="16" />
-                        <line x1="20" y1="12" x2="20" y2="3" />
-                        <line x1="1" y1="14" x2="7" y2="14" />
-                        <line x1="9" y1="8" x2="15" y2="8" />
-                        <line x1="17" y1="16" x2="23" y2="16" />
-                      </svg>
-                      Toggle dev tools
+                      <span className="flex items-center gap-2">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="4" y1="21" x2="4" y2="14" />
+                          <line x1="4" y1="10" x2="4" y2="3" />
+                          <line x1="12" y1="21" x2="12" y2="12" />
+                          <line x1="12" y1="8" x2="12" y2="3" />
+                          <line x1="20" y1="21" x2="20" y2="16" />
+                          <line x1="20" y1="12" x2="20" y2="3" />
+                          <line x1="1" y1="14" x2="7" y2="14" />
+                          <line x1="9" y1="8" x2="15" y2="8" />
+                          <line x1="17" y1="16" x2="23" y2="16" />
+                        </svg>
+                        Dev tools
+                      </span>
+                      <div className={`relative ml-3 h-4 w-7 rounded-full transition-colors ${!devToolsHidden ? "bg-green-500" : "bg-gray-300"}`}>
+                        <div className={`absolute top-0.5 h-3 w-3 rounded-full bg-white shadow transition-transform ${!devToolsHidden ? "translate-x-3.5" : "translate-x-0.5"}`} />
+                      </div>
                     </button>
                   )}
                   <button
