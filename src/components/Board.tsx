@@ -153,6 +153,8 @@ export default function Board({ data, onRefresh }: BoardProps) {
   const [renamingViewId, setRenamingViewId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const renameInputRef = useRef<HTMLInputElement>(null);
+  const [draggingViewId, setDraggingViewId] = useState<string | null>(null);
+  const [viewDropTarget, setViewDropTarget] = useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [propsOpen, setPropsOpen] = useState(false);
   const [visibleCardProps, setVisibleCardProps] = useState<string[] | null>(loadCardProperties);
@@ -539,6 +541,9 @@ export default function Board({ data, onRefresh }: BoardProps) {
       setFilterClients(new Set());
       setFieldFilters({});
       setActiveViewId(null);
+      // Reset properties to defaults
+      setVisibleCardProps(null);
+      localStorage.removeItem(CARD_PROPS_KEY);
     } else {
       setFilterAssignees(new Set(view.assignees));
       setFilterClients(new Set(view.clients));
@@ -573,6 +578,20 @@ export default function Board({ data, onRefresh }: BoardProps) {
     saveViews(next);
     setRenamingViewId(null);
     setRenameValue("");
+  };
+
+  const handleViewDrop = (targetId: string) => {
+    if (!draggingViewId || draggingViewId === targetId) return;
+    const fromIndex = savedViews.findIndex((v) => v.id === draggingViewId);
+    const toIndex = savedViews.findIndex((v) => v.id === targetId);
+    if (fromIndex === -1 || toIndex === -1) return;
+    const next = [...savedViews];
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, moved);
+    setSavedViews(next);
+    saveViews(next);
+    setDraggingViewId(null);
+    setViewDropTarget(null);
   };
 
   // Close view context menu on outside click
@@ -1366,7 +1385,30 @@ export default function Board({ data, onRefresh }: BoardProps) {
             <>
               <div className="h-4 w-px bg-gray-200" />
               {savedViews.map((view) => (
-                <div key={view.id} className="shrink-0">
+                <div
+                  key={view.id}
+                  className={`shrink-0 ${draggingViewId === view.id ? "opacity-50" : ""} ${viewDropTarget === view.id && draggingViewId !== view.id ? "ring-2 ring-blue-300 rounded-full" : ""}`}
+                  draggable={renamingViewId !== view.id}
+                  onDragStart={(e) => {
+                    setDraggingViewId(view.id);
+                    e.dataTransfer.effectAllowed = "move";
+                    e.dataTransfer.setData("text/plain", view.id);
+                  }}
+                  onDragEnd={() => {
+                    setDraggingViewId(null);
+                    setViewDropTarget(null);
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = "move";
+                    setViewDropTarget(view.id);
+                  }}
+                  onDragLeave={() => setViewDropTarget(null)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    handleViewDrop(view.id);
+                  }}
+                >
                   {renamingViewId === view.id ? (
                     <form
                       className="inline-flex items-center gap-1"
