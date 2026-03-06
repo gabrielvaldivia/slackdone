@@ -1557,7 +1557,7 @@ export default function Board({ data, onRefresh }: BoardProps) {
         )}
       </div>
 
-      <div className="flex flex-1 gap-4 overflow-x-auto p-4">
+      <div className="flex flex-1 gap-4 overflow-x-auto p-4 snap-x snap-mandatory sm:snap-none">
         {visibleColumns.map((column) => {
           const originalIndex = columns.findIndex((c) => c.id === column.id);
           const isMinimized = minimizedColumns.has(column.id);

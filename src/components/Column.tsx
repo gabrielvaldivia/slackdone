@@ -80,7 +80,7 @@ export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDe
   if (minimized) {
     return (
       <div
-        className={`flex w-16 shrink-0 flex-col items-center rounded-xl py-3 gap-2 cursor-pointer group transition-colors ${
+        className={`snap-center flex w-16 shrink-0 flex-col items-center rounded-xl py-3 gap-2 cursor-pointer group transition-colors ${
           dragOver ? "ring-2 ring-blue-300" : ""
         }`}
         style={{ backgroundColor: colors.bg }}
@@ -138,7 +138,7 @@ export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDe
 
   return (
     <div
-      className={`group/col flex w-72 shrink-0 flex-col rounded-xl transition-colors ${
+      className={`snap-center group/col flex w-72 shrink-0 flex-col rounded-xl transition-colors ${
         dragOver ? "ring-2 ring-blue-300" : ""
       } ${columnDragOver ? "ring-2 ring-purple-300" : ""} ${isColumnDragging ? "opacity-50" : ""}`}
       style={{ backgroundColor: colors.bg }}
