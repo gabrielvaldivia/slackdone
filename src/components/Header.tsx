@@ -179,7 +179,7 @@ export default function Header({
                   </button>
                   {!isElectron && (
                     <a
-                      href="https://github.com/gabrielvaldivia/slackdone/releases/latest"
+                      href="/api/download"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-left hover:bg-gray-50 whitespace-nowrap"
