@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { UnifiedBoardData, BoardColumn as BoardColumnType, BoardItem } from "@/lib/types";
+import { UnifiedBoardData, BoardColumn as BoardColumnType, BoardItem, SavedView } from "@/lib/types";
 import Column from "./Column";
 import CardDetailModal from "./CardDetailModal";
 import FilterDropdown, { FilterOption } from "./FilterDropdown";
@@ -65,14 +65,6 @@ function saveBoardPreferences(columnOrder: string[], hiddenColumns: Set<string>,
 
 const VIEWS_KEY = "slackdone:savedViews";
 
-interface SavedView {
-  id: string;
-  name: string;
-  assignees: string[];
-  clients: string[];
-  properties?: string[];
-}
-
 function loadViews(): SavedView[] {
   if (typeof window === "undefined") return [];
   try {
@@ -83,8 +75,14 @@ function loadViews(): SavedView[] {
   }
 }
 
+// Save to both localStorage (fast) and backend (persistent)
 function saveViews(views: SavedView[]) {
   localStorage.setItem(VIEWS_KEY, JSON.stringify(views));
+  fetch("/api/saved-views", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(views),
+  }).catch(() => {});
 }
 
 function loadCardProperties(): string[] | null {
@@ -168,6 +166,16 @@ export default function Board({ data, onRefresh }: BoardProps) {
           setMinimizedColumns(new Set(prefs.minimizedColumns));
           localStorage.setItem(MINIMIZED_KEY, JSON.stringify(prefs.minimizedColumns));
         }
+      })
+      .catch(() => {});
+
+    // Load saved views from backend
+    fetch("/api/saved-views")
+      .then((res) => res.ok ? res.json() : null)
+      .then((views) => {
+        if (!views || !Array.isArray(views) || views.length === 0) return;
+        setSavedViews(views);
+        localStorage.setItem(VIEWS_KEY, JSON.stringify(views));
       })
       .catch(() => {});
   }, []); // eslint-disable-line react-hooks/exhaustive-deps

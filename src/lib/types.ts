@@ -111,6 +111,15 @@ export interface BoardItem {
   workspaceName?: string;
 }
 
+// Saved filter view
+export interface SavedView {
+  id: string;
+  name: string;
+  assignees: string[];
+  clients: string[];
+  properties?: string[];
+}
+
 // Unified board merging multiple lists across workspaces
 export interface UnifiedBoardData {
   columns: BoardColumn[];

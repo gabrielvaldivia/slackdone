@@ -12,7 +12,7 @@ import {
   query,
   where,
 } from "firebase/firestore";
-import { Workspace, SavedList, User } from "./types";
+import { Workspace, SavedList, User, SavedView } from "./types";
 
 function getDb() {
   if (getApps().length === 0) {
@@ -137,6 +137,19 @@ export async function getBoardPreferences(userId: string): Promise<BoardPreferen
 export async function updateBoardPreferences(userId: string, prefs: BoardPreferences) {
   const db = getDb();
   await updateDoc(doc(db, "users", userId), { boardPreferences: prefs });
+}
+
+// Saved views (filter presets)
+export async function getSavedViews(userId: string): Promise<SavedView[]> {
+  const db = getDb();
+  const snap = await getDoc(doc(db, "users", userId));
+  if (!snap.exists()) return [];
+  return snap.data().savedViews ?? [];
+}
+
+export async function updateSavedViews(userId: string, views: SavedView[]) {
+  const db = getDb();
+  await updateDoc(doc(db, "users", userId), { savedViews: views });
 }
 
 // Legacy accessors for migration
