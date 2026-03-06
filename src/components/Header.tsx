@@ -57,9 +57,10 @@ export default function Header({
   const helpRef = useRef<HTMLButtonElement>(null);
   const helpPopoverRef = useRef<HTMLDivElement>(null);
   const [devToolsHidden, setDevToolsHidden] = useState(true);
-  const [isElectron, setIsElectron] = useState(false);
+  const [isDesktopApp, setIsDesktopApp] = useState(false);
   useEffect(() => {
-    if ((window as unknown as Record<string, unknown>).__ELECTRON__ === true) setIsElectron(true);
+    const w = window as unknown as Record<string, unknown>;
+    if (w.__ELECTRON__ === true || w.__TAURI__ != null) setIsDesktopApp(true);
     if (process.env.NODE_ENV === "development") document.body.classList.add("hide-dev-tools");
   }, []);
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -136,9 +137,9 @@ export default function Header({
   };
 
   return (
-    <header className={`flex items-center justify-between border-b border-border bg-white px-4 py-3 ${isElectron ? "pl-20" : ""}`} style={{ WebkitAppRegion: "drag" } as React.CSSProperties}>
+    <header className={`flex items-center justify-between border-b border-border bg-white px-4 py-3 ${isDesktopApp ? "pl-20" : ""}`} style={{ WebkitAppRegion: "drag" } as React.CSSProperties}>
       <div className="flex items-center gap-4">
-        {!isElectron && (
+        {!isDesktopApp && (
           <h1 className="text-sm font-semibold tracking-tight">
             Slackdone
           </h1>
@@ -183,7 +184,7 @@ export default function Header({
                     </svg>
                     Manage lists
                   </button>
-                  {!isElectron && (
+                  {!isDesktopApp && (
                     <a
                       href="/api/download"
                       target="_blank"

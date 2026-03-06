@@ -1,4 +1,4 @@
-name: Build Electron App
+name: Build Desktop App
 
 on:
   push:
@@ -19,18 +19,18 @@ jobs:
           node-version: 20
           cache: npm
 
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
       - run: npm ci
 
-      - name: Build and publish
-        run: npx electron-builder --mac --publish always
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@v0
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          name: slackdone-mac
-          path: |
-            dist/*.dmg
-            dist/*.zip
-            dist/latest-mac.yml
+          tagName: v__VERSION__
+          releaseName: "Slackdone v__VERSION__"
+          releaseBody: "See the assets to download this version."
+          releaseDraft: false
+          prerelease: false
