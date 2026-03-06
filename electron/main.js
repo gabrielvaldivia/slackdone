@@ -4,11 +4,23 @@ const path = require("path");
 const net = require("net");
 const { autoUpdater } = require("electron-updater");
 
+const gotLock = app.requestSingleInstanceLock();
+if (!gotLock) {
+  app.quit();
+}
+
 let mainWindow;
 let nextServer;
 let activePort;
 const DEV_PORT = 3000;
 const PROD_PORT = 3033;
+
+app.on("second-instance", () => {
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
+  }
+});
 
 function isPortInUse(port) {
   return new Promise((resolve) => {
