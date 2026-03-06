@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 export interface FilterOption {
   id: string;
@@ -25,17 +26,27 @@ export default function FilterDropdown({
   onChange,
 }: FilterDropdownProps) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
 
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
+      if (
+        buttonRef.current?.contains(e.target as Node) ||
+        menuRef.current?.contains(e.target as Node)
+      ) return;
+      setOpen(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open || !buttonRef.current) return;
+    const rect = buttonRef.current.getBoundingClientRect();
+    setMenuPos({ top: rect.bottom + 4, left: rect.left });
   }, [open]);
 
   const toggle = (id: string) => {
@@ -48,8 +59,9 @@ export default function FilterDropdown({
   const activeCount = selected.size;
 
   return (
-    <div ref={ref} className="relative">
+    <div className="shrink-0">
       <button
+        ref={buttonRef}
         onClick={() => setOpen((v) => !v)}
         className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
           activeCount > 0
@@ -74,8 +86,12 @@ export default function FilterDropdown({
         </svg>
       </button>
 
-      {open && (
-        <div className="absolute left-0 top-full z-50 mt-1 w-56 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+      {open && createPortal(
+        <div
+          ref={menuRef}
+          className="fixed z-50 w-56 rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
+          style={{ top: menuPos.top, left: menuPos.left }}
+        >
           {options.length === 0 && (
             <div className="px-3 py-2 text-xs text-gray-400">No options</div>
           )}
@@ -113,7 +129,8 @@ export default function FilterDropdown({
               Clear all
             </button>
           )}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

@@ -1,11 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { UnifiedBoardData, BoardColumn as BoardColumnType, BoardItem } from "@/lib/types";
 import Column from "./Column";
 import CardDetailModal from "./CardDetailModal";
 import FilterDropdown, { FilterOption } from "./FilterDropdown";
 import { BADGE_COLORS, getClientName } from "./Card";
+import FadeScroll from "./FadeScroll";
 
 interface BoardProps {
   data: UnifiedBoardData;
@@ -70,6 +72,7 @@ interface SavedView {
   name: string;
   assignees: string[];
   clients: string[];
+  filters?: Record<string, string[]>;
   properties?: string[];
 }
 
@@ -85,6 +88,11 @@ function loadViews(): SavedView[] {
 
 function saveViews(views: SavedView[]) {
   localStorage.setItem(VIEWS_KEY, JSON.stringify(views));
+  fetch("/api/saved-views", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(views),
+  }).catch(() => {});
 }
 
 function loadCardProperties(): string[] | null {
@@ -132,6 +140,7 @@ export default function Board({ data, onRefresh }: BoardProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterAssignees, setFilterAssignees] = useState<Set<string>>(new Set());
   const [filterClients, setFilterClients] = useState<Set<string>>(new Set());
+  const [fieldFilters, setFieldFilters] = useState<Record<string, Set<string>>>({});
   const [savedViews, setSavedViews] = useState<SavedView[]>(loadViews);
   const [activeViewId, setActiveViewId] = useState<string | null>(null);
   const [savingView, setSavingView] = useState(false);
@@ -142,8 +151,11 @@ export default function Board({ data, onRefresh }: BoardProps) {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [propsOpen, setPropsOpen] = useState(false);
   const [visibleCardProps, setVisibleCardProps] = useState<string[] | null>(loadCardProperties);
-  const propsRef = useRef<HTMLDivElement>(null);
+  const propsButtonRef = useRef<HTMLButtonElement>(null);
+  const propsMenuRef = useRef<HTMLDivElement>(null);
   const [draggingColumnId, setDraggingColumnId] = useState<string | null>(null);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const mobileSearchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setColumns(applyColumnOrder(data.columns, columnOrder));
@@ -167,6 +179,17 @@ export default function Board({ data, onRefresh }: BoardProps) {
         if (prefs.minimizedColumns) {
           setMinimizedColumns(new Set(prefs.minimizedColumns));
           localStorage.setItem(MINIMIZED_KEY, JSON.stringify(prefs.minimizedColumns));
+        }
+      })
+      .catch(() => {});
+
+    // Load saved views from backend
+    fetch("/api/saved-views")
+      .then((res) => res.ok ? res.json() : null)
+      .then((views) => {
+        if (views?.length) {
+          setSavedViews(views);
+          localStorage.setItem(VIEWS_KEY, JSON.stringify(views));
         }
       })
       .catch(() => {});
@@ -207,9 +230,11 @@ export default function Board({ data, onRefresh }: BoardProps) {
   useEffect(() => {
     if (!propsOpen) return;
     const handler = (e: MouseEvent) => {
-      if (propsRef.current && !propsRef.current.contains(e.target as Node)) {
-        setPropsOpen(false);
-      }
+      if (
+        propsButtonRef.current?.contains(e.target as Node) ||
+        propsMenuRef.current?.contains(e.target as Node)
+      ) return;
+      setPropsOpen(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -283,13 +308,53 @@ export default function Board({ data, onRefresh }: BoardProps) {
     return opts.sort((a, b) => a.name.localeCompare(b.name));
   }, [columns, clientColorMap]);
 
+  // Build filter options for all visible select/status-type properties
+  const selectFilterProps = useMemo(() => {
+    const result: { key: string; label: string; options: FilterOption[] }[] = [];
+    for (const prop of availableCardProps) {
+      if (prop.type !== "select" && prop.type !== "status") continue;
+      if (!effectiveCardProps.has(prop.key)) continue;
+      // Skip client — already handled by clientOptions
+      if (prop.label.toLowerCase() === "client") continue;
+      const optMap = new Map<string, FilterOption>();
+      for (const col of columns) {
+        for (const item of col.items) {
+          for (const field of item.fields || []) {
+            if (field.key !== prop.key) continue;
+            const display = field.displayValue?.trim();
+            if (display && !/^Opt[A-Z0-9]+$/.test(display)) {
+              if (!optMap.has(display)) {
+                optMap.set(display, { id: display, name: display });
+              }
+            }
+          }
+        }
+      }
+      if (optMap.size > 0) {
+        result.push({
+          key: prop.key,
+          label: prop.label,
+          options: [...optMap.values()].sort((a, b) => a.name.localeCompare(b.name)),
+        });
+      }
+    }
+    return result;
+  }, [availableCardProps, effectiveCardProps, columns]);
+
+  // Active field filter keys (non-empty)
+  const activeFieldFilterKeys = useMemo(
+    () => Object.keys(fieldFilters).filter((k) => fieldFilters[k].size > 0),
+    [fieldFilters]
+  );
+
   // Apply filters and search to columns
   const applyFilters = useMemo(() => {
     const hasAssigneeFilter = filterAssignees.size > 0;
     const hasClientFilter = filterClients.size > 0;
+    const hasFieldFilters = activeFieldFilterKeys.length > 0;
     const query = searchQuery.toLowerCase().trim();
     const hasSearch = query.length > 0;
-    if (!hasAssigneeFilter && !hasClientFilter && !hasSearch) return columns;
+    if (!hasAssigneeFilter && !hasClientFilter && !hasFieldFilters && !hasSearch) return columns;
 
     // Expand selected assignee option IDs to all merged user IDs
     const expandedAssigneeIds = new Set<string>();
@@ -315,6 +380,14 @@ export default function Board({ data, onRefresh }: BoardProps) {
           const name = getClientName(item);
           if (!filterClients.has(name)) return false;
         }
+        if (hasFieldFilters) {
+          for (const key of activeFieldFilterKeys) {
+            const selected = fieldFilters[key];
+            const field = (item.fields || []).find((f) => f.key === key);
+            const display = field?.displayValue?.trim() || "";
+            if (!selected.has(display)) return false;
+          }
+        }
         if (hasSearch) {
           const title = item.title.toLowerCase();
           const assigneeNames = (item.assignees || [])
@@ -328,7 +401,7 @@ export default function Board({ data, onRefresh }: BoardProps) {
         return true;
       }),
     }));
-  }, [columns, filterAssignees, filterClients, assigneeOptions, searchQuery]);
+  }, [columns, filterAssignees, filterClients, fieldFilters, activeFieldFilterKeys, assigneeOptions, searchQuery]);
 
   // Refs to track latest values for save calls inside setState callbacks
   const columnOrderRef = useRef(columnOrder);
@@ -378,7 +451,8 @@ export default function Board({ data, onRefresh }: BoardProps) {
     });
   };
 
-  const hasActiveFilters = filterAssignees.size > 0 || filterClients.size > 0;
+  const fieldFilterCount = activeFieldFilterKeys.reduce((sum, k) => sum + fieldFilters[k].size, 0);
+  const hasActiveFilters = filterAssignees.size > 0 || filterClients.size > 0 || fieldFilterCount > 0;
 
   // Check if current filters differ from the active saved view
   const filtersMatchActiveView = useMemo(() => {
@@ -390,6 +464,16 @@ export default function Board({ data, onRefresh }: BoardProps) {
     if (filterAssignees.size !== viewAssignees.size || filterClients.size !== viewClients.size) return false;
     for (const id of filterAssignees) if (!viewAssignees.has(id)) return false;
     for (const id of filterClients) if (!viewClients.has(id)) return false;
+    // Check field filters match
+    const viewFieldFilters = view.filters || {};
+    const viewFieldKeys = Object.keys(viewFieldFilters).filter((k) => viewFieldFilters[k].length > 0);
+    if (activeFieldFilterKeys.length !== viewFieldKeys.length) return false;
+    for (const key of activeFieldFilterKeys) {
+      const viewSet = new Set(viewFieldFilters[key] || []);
+      const current = fieldFilters[key];
+      if (current.size !== viewSet.size) return false;
+      for (const v of current) if (!viewSet.has(v)) return false;
+    }
     // Check properties match
     if (view.properties) {
       const viewProps = new Set(view.properties);
@@ -397,18 +481,23 @@ export default function Board({ data, onRefresh }: BoardProps) {
       for (const key of effectiveCardProps) if (!viewProps.has(key)) return false;
     }
     return true;
-  }, [activeViewId, savedViews, filterAssignees, filterClients, effectiveCardProps]);
+  }, [activeViewId, savedViews, filterAssignees, filterClients, fieldFilters, activeFieldFilterKeys, effectiveCardProps]);
 
   const showSaveView = hasActiveFilters && !filtersMatchActiveView;
 
   const handleSaveView = useCallback(() => {
     const name = viewName.trim();
     if (!name) return;
+    const serializedFilters: Record<string, string[]> = {};
+    for (const key of activeFieldFilterKeys) {
+      serializedFilters[key] = [...fieldFilters[key]];
+    }
     const view: SavedView = {
       id: Date.now().toString(),
       name,
       assignees: [...filterAssignees],
       clients: [...filterClients],
+      filters: serializedFilters,
       properties: [...effectiveCardProps],
     };
     const next = [...savedViews, view];
@@ -417,16 +506,24 @@ export default function Board({ data, onRefresh }: BoardProps) {
     setActiveViewId(view.id);
     setSavingView(false);
     setViewName("");
-  }, [viewName, filterAssignees, filterClients, effectiveCardProps, savedViews]);
+  }, [viewName, filterAssignees, filterClients, fieldFilters, activeFieldFilterKeys, effectiveCardProps, savedViews]);
 
   const handleLoadView = (view: SavedView) => {
     if (activeViewId === view.id) {
       setFilterAssignees(new Set());
       setFilterClients(new Set());
+      setFieldFilters({});
       setActiveViewId(null);
     } else {
       setFilterAssignees(new Set(view.assignees));
       setFilterClients(new Set(view.clients));
+      const restored: Record<string, Set<string>> = {};
+      if (view.filters) {
+        for (const [k, v] of Object.entries(view.filters)) {
+          if (v.length > 0) restored[k] = new Set(v);
+        }
+      }
+      setFieldFilters(restored);
       if (view.properties) {
         setVisibleCardProps(view.properties);
         saveCardProperties(view.properties);
@@ -1082,20 +1179,47 @@ export default function Board({ data, onRefresh }: BoardProps) {
       )}
 
       <div className="flex flex-col gap-2 px-4 pt-3">
-        <div className="flex items-center gap-2">
-          {/* Left: Search + Filters toggle */}
-          <div className="relative">
-            <svg
-              width="12"
-              height="12"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400"
+        <FadeScroll className="flex items-center gap-2">
+          {/* Search */}
+          {mobileSearchOpen ? (
+            <div className="relative shrink-0 sm:hidden">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+              <input
+                ref={mobileSearchRef}
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search..."
+                className="h-7 w-44 rounded-full border border-gray-200 bg-white pl-8 pr-8 text-xs text-gray-700 placeholder-gray-400 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                onBlur={() => { if (!searchQuery) setMobileSearchOpen(false); }}
+              />
+              <button
+                onClick={() => { setSearchQuery(""); setMobileSearchOpen(false); }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => { setMobileSearchOpen(true); requestAnimationFrame(() => mobileSearchRef.current?.focus()); }}
+              className="inline-flex shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors h-7 w-7 sm:hidden"
             >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+            </button>
+          )}
+          {/* Desktop search */}
+          <div className="relative shrink-0 hidden sm:block">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400">
               <circle cx="11" cy="11" r="8" />
               <line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
@@ -1119,10 +1243,11 @@ export default function Board({ data, onRefresh }: BoardProps) {
             )}
           </div>
 
+          {/* Filters - icon only on mobile */}
           <button
             onClick={() => setFiltersOpen((v) => !v)}
-            className={`inline-flex items-center gap-1.5 rounded-full pl-3 py-1 text-xs font-medium transition-colors ${
-              hasActiveFilters && !filtersOpen ? "pr-1.5" : "pr-3"
+            className={`inline-flex shrink-0 items-center justify-center gap-1.5 rounded-full text-xs font-medium transition-colors h-7 w-7 sm:h-auto sm:w-auto sm:pl-3 sm:py-1 ${
+              hasActiveFilters && !filtersOpen ? "sm:pr-1.5" : "sm:pr-3"
             } ${
               filtersOpen || hasActiveFilters
                 ? "bg-blue-100 text-blue-700"
@@ -1134,13 +1259,66 @@ export default function Board({ data, onRefresh }: BoardProps) {
               <line x1="6" y1="12" x2="18" y2="12" />
               <line x1="8" y1="18" x2="16" y2="18" />
             </svg>
-            Filters
+            <span className="hidden sm:inline">Filters</span>
             {hasActiveFilters && !filtersOpen && (
-              <span className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 text-[9px] text-white">
-                {filterAssignees.size + filterClients.size}
+              <span className="hidden sm:flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 text-[9px] text-white">
+                {filterAssignees.size + filterClients.size + fieldFilterCount}
               </span>
             )}
           </button>
+
+          {/* Properties - icon only on mobile */}
+          <div className="shrink-0">
+            <button
+              ref={propsButtonRef}
+              onClick={() => setPropsOpen((v) => !v)}
+              className={`inline-flex items-center justify-center gap-1.5 rounded-full text-xs font-medium transition-colors h-7 w-7 sm:h-auto sm:w-auto sm:px-3 sm:py-1 ${
+                propsOpen
+                  ? "bg-blue-100 text-blue-700"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="8" y1="6" x2="21" y2="6" />
+                <line x1="8" y1="12" x2="21" y2="12" />
+                <line x1="8" y1="18" x2="21" y2="18" />
+                <line x1="3" y1="6" x2="3.01" y2="6" />
+                <line x1="3" y1="12" x2="3.01" y2="12" />
+                <line x1="3" y1="18" x2="3.01" y2="18" />
+              </svg>
+              <span className="hidden sm:inline">Properties</span>
+            </button>
+            {propsOpen && createPortal(
+              <div
+                ref={propsMenuRef}
+                className="fixed z-50 w-56 rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
+                style={{
+                  top: (propsButtonRef.current?.getBoundingClientRect().bottom ?? 0) + 4,
+                  left: propsButtonRef.current?.getBoundingClientRect().left ?? 0,
+                }}
+              >
+                {availableCardProps.map((prop) => (
+                  <label
+                    key={prop.key}
+                    className="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-sm hover:bg-gray-50"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={effectiveCardProps.has(prop.key)}
+                      onChange={() => toggleCardProp(prop.key)}
+                      className="h-3.5 w-3.5 rounded border-gray-300 text-blue-600"
+                    />
+                    <span className="truncate">{prop.label}</span>
+                    <span className="ml-auto text-[10px] text-gray-400">{prop.type}</span>
+                  </label>
+                ))}
+                {availableCardProps.length === 0 && (
+                  <div className="px-3 py-2 text-xs text-gray-400">No properties available</div>
+                )}
+              </div>,
+              document.body
+            )}
+          </div>
 
           {/* Divider + Saved views */}
           {savedViews.length > 0 && (
@@ -1232,12 +1410,12 @@ export default function Board({ data, onRefresh }: BoardProps) {
               </button>
             </form>
           )}
-        </div>
+        </FadeScroll>
 
         {/* Collapsible filter row: Assignee, Client, Show Hidden, Properties */}
         {filtersOpen && (
-          <div className="flex flex-wrap items-center gap-2">
-            {assigneeOptions.length > 0 && (
+          <FadeScroll className="flex items-center gap-2">
+            {assigneeOptions.length > 0 && effectiveCardProps.has("assignees") && (
               <FilterDropdown
                 label="Assignee"
                 options={assigneeOptions}
@@ -1245,7 +1423,7 @@ export default function Board({ data, onRefresh }: BoardProps) {
                 onChange={(v) => { setFilterAssignees(v); setActiveViewId(null); }}
               />
             )}
-            {clientOptions.length > 0 && (
+            {clientOptions.length > 0 && availableCardProps.some((p) => p.label.toLowerCase() === "client" && effectiveCardProps.has(p.key)) && (
               <FilterDropdown
                 label="Client"
                 options={clientOptions}
@@ -1253,12 +1431,24 @@ export default function Board({ data, onRefresh }: BoardProps) {
                 onChange={(v) => { setFilterClients(v); setActiveViewId(null); }}
               />
             )}
+            {selectFilterProps.map((prop) => (
+              <FilterDropdown
+                key={prop.key}
+                label={prop.label}
+                options={prop.options}
+                selected={fieldFilters[prop.key] || new Set()}
+                onChange={(v) => {
+                  setFieldFilters((prev) => ({ ...prev, [prop.key]: v }));
+                  setActiveViewId(null);
+                }}
+              />
+            ))}
             {hiddenCount > 0 && (
               <button
                 onClick={() => setShowHidden((v) => !v)}
-                className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-200"
+                className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-200"
               >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg className="shrink-0" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   {showHidden ? (
                     <><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></>
                   ) : (
@@ -1268,51 +1458,7 @@ export default function Board({ data, onRefresh }: BoardProps) {
                 {showHidden ? "Hide" : "Show"} {hiddenCount} hidden
               </button>
             )}
-
-            {/* Properties */}
-            <div className="relative" ref={propsRef}>
-              <button
-                onClick={() => setPropsOpen((v) => !v)}
-                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                  propsOpen
-                    ? "bg-blue-100 text-blue-700"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                }`}
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="8" y1="6" x2="21" y2="6" />
-                  <line x1="8" y1="12" x2="21" y2="12" />
-                  <line x1="8" y1="18" x2="21" y2="18" />
-                  <line x1="3" y1="6" x2="3.01" y2="6" />
-                  <line x1="3" y1="12" x2="3.01" y2="12" />
-                  <line x1="3" y1="18" x2="3.01" y2="18" />
-                </svg>
-                Properties
-              </button>
-              {propsOpen && (
-                <div className="absolute left-0 top-full z-50 mt-1 w-56 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
-                  {availableCardProps.map((prop) => (
-                    <label
-                      key={prop.key}
-                      className="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-sm hover:bg-gray-50"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={effectiveCardProps.has(prop.key)}
-                        onChange={() => toggleCardProp(prop.key)}
-                        className="h-3.5 w-3.5 rounded border-gray-300 text-blue-600"
-                      />
-                      <span className="truncate">{prop.label}</span>
-                      <span className="ml-auto text-[10px] text-gray-400">{prop.type}</span>
-                    </label>
-                  ))}
-                  {availableCardProps.length === 0 && (
-                    <div className="px-3 py-2 text-xs text-gray-400">No properties available</div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
+          </FadeScroll>
         )}
       </div>
 

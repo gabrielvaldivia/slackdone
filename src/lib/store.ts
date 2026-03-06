@@ -139,6 +139,27 @@ export async function updateBoardPreferences(userId: string, prefs: BoardPrefere
   await updateDoc(doc(db, "users", userId), { boardPreferences: prefs });
 }
 
+// Saved views
+export interface SavedView {
+  id: string;
+  name: string;
+  assignees: string[];
+  clients: string[];
+  properties?: string[];
+}
+
+export async function getSavedViews(userId: string): Promise<SavedView[]> {
+  const db = getDb();
+  const snap = await getDoc(doc(db, "users", userId));
+  if (!snap.exists()) return [];
+  return snap.data().savedViews ?? [];
+}
+
+export async function updateSavedViews(userId: string, views: SavedView[]) {
+  const db = getDb();
+  await updateDoc(doc(db, "users", userId), { savedViews: views });
+}
+
 // Legacy accessors for migration
 export async function getLegacyWorkspaces(): Promise<Workspace[]> {
   const db = getDb();
