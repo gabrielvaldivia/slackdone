@@ -6,6 +6,8 @@ import EmptyState from "@/components/EmptyState";
 import Board from "@/components/Board";
 import { UnifiedBoardData } from "@/lib/types";
 
+import { useDialKit } from "dialkit";
+
 interface WorkspaceInfo {
   id: string;
   name: string;
@@ -24,7 +26,6 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string>("");
-  const [showAddList, setShowAddList] = useState(false);
   const [user, setUser] = useState<UserInfo | null>(null);
 
   useEffect(() => {
@@ -114,12 +115,13 @@ export default function Home() {
   };
 
   const handleListAdded = () => {
-    setShowAddList(false);
     fetchBoard();
   };
 
+  const devDials = useDialKit("Page", { simulateEmpty: false });
+  const devEmpty = devDials.simulateEmpty as boolean;
   const hasLists = boardData && boardData.lists && boardData.lists.length > 0;
-  const showEmptyState = !loading && (!boardData || !hasLists);
+  const showEmptyState = devEmpty || (!loading && (!boardData || !hasLists));
 
   return (
     <div className="flex h-dvh flex-col">
@@ -128,8 +130,6 @@ export default function Home() {
         onConnect={handleConnect}
         onDisconnect={handleDisconnect}
         refreshing={refreshing}
-        showAddList={showAddList}
-        onToggleAddList={() => setShowAddList(!showAddList)}
         onListAdded={handleListAdded}
         lists={boardData?.lists || []}
         onListRemoved={fetchBoard}
@@ -154,11 +154,12 @@ export default function Home() {
           hasEnvVars={hasEnvVars}
           hasWorkspaces={workspaces.length > 0}
           onConnect={handleConnect}
-          onAddList={() => setShowAddList(true)}
+          onListAdded={handleListAdded}
+          workspaces={workspaces}
         />
       )}
 
-      {boardData && hasLists && (
+      {boardData && hasLists && !devEmpty && (
         <Board data={boardData} onRefresh={fetchBoard} />
       )}
     </div>
