@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { BoardColumn as BoardColumnType, BoardItem } from "@/lib/types";
 import Card from "./Card";
 import AddCardForm from "./AddCardForm";
@@ -48,6 +49,8 @@ export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDe
   const [columnDragOver, setColumnDragOver] = useState(false);
   const [dropIndex, setDropIndex] = useState<number | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
+  const menuBtnRef = useRef<HTMLButtonElement>(null);
   const [topFormOpen, setTopFormOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const dragCounter = useRef(0);
@@ -58,7 +61,10 @@ export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDe
   useEffect(() => {
     if (!menuOpen) return;
     const handleClick = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+      if (
+        menuRef.current && !menuRef.current.contains(e.target as Node) &&
+        menuBtnRef.current && !menuBtnRef.current.contains(e.target as Node)
+      ) {
         setMenuOpen(false);
       }
     };
@@ -223,9 +229,14 @@ export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDe
             </svg>
           </button>
         {(onHide || onMinimize) && (
-          <div className="relative" ref={menuRef}>
+          <div>
             <button
-              onClick={() => setMenuOpen((v) => !v)}
+              ref={menuBtnRef}
+              onClick={() => {
+                const rect = menuBtnRef.current?.getBoundingClientRect();
+                if (rect) setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+                setMenuOpen((v) => !v);
+              }}
               className="flex h-6 w-6 items-center justify-center rounded"
               title="Column options"
             >
@@ -235,8 +246,12 @@ export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDe
                 <circle cx="12" cy="19" r="2" />
               </svg>
             </button>
-            {menuOpen && (
-              <div className="absolute right-0 top-8 z-50 min-w-[140px] rounded-lg ring-1 ring-border bg-white py-1 shadow-lg">
+            {menuOpen && createPortal(
+              <div
+                ref={menuRef}
+                className="fixed z-50 min-w-[140px] rounded-lg ring-1 ring-border bg-white py-1 shadow-lg"
+                style={{ top: menuPos.top, right: menuPos.right }}
+              >
                 {onMinimize && (
                   <button
                     onClick={() => { onMinimize(); setMenuOpen(false); }}
@@ -264,7 +279,8 @@ export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDe
                     Hide
                   </button>
                 )}
-              </div>
+              </div>,
+              document.body
             )}
           </div>
         )}
