@@ -26,6 +26,8 @@ interface HeaderProps {
   onListRemoved: () => void;
   user?: UserInfo | null;
   onLogout?: () => void;
+  notificationsEnabled?: boolean;
+  onToggleNotifications?: () => void;
 }
 
 export default function Header({
@@ -38,6 +40,8 @@ export default function Header({
   onListRemoved,
   user,
   onLogout,
+  notificationsEnabled,
+  onToggleNotifications,
 }: HeaderProps) {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [manageListsOpen, setManageListsOpen] = useState(false);
@@ -204,6 +208,23 @@ export default function Header({
                     </svg>
                     API Docs
                   </a>
+                  {onToggleNotifications && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onToggleNotifications(); }}
+                      className="flex items-center justify-between w-full px-3 py-1.5 text-xs text-left hover:bg-gray-50 whitespace-nowrap"
+                    >
+                      <span className="flex items-center gap-2">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                          <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                        </svg>
+                        Notifications
+                      </span>
+                      <div className={`relative ml-3 h-4 w-7 rounded-full transition-colors ${notificationsEnabled ? "bg-green-500" : "bg-gray-300"}`}>
+                        <div className={`absolute top-0.5 h-3 w-3 rounded-full bg-white shadow transition-transform ${notificationsEnabled ? "translate-x-3.5" : "translate-x-0.5"}`} />
+                      </div>
+                    </button>
+                  )}
                   {process.env.NODE_ENV === "development" && (
                     <button
                       onClick={() => {

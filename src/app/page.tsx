@@ -27,6 +27,13 @@ export default function Home() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string>("");
   const [user, setUser] = useState<UserInfo | null>(null);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("notificationsEnabled");
+      return stored === null ? true : stored === "true";
+    }
+    return true;
+  });
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -99,17 +106,17 @@ export default function Home() {
       if (!res.ok) throw new Error("Failed to load board");
       const data = await res.json();
 
-      // Detect changes and notify (only on refresh, not initial load)
-      if (prev && data.columns) {
+      // Detect changes and notify (only on refresh, only when window is in background)
+      if (prev && data.columns && !document.hasFocus() && notificationsEnabled) {
         const oldIndex = buildItemIndex(prev.columns);
         const newIndex = buildItemIndex(data.columns);
 
         for (const [id, { title, column }] of newIndex) {
           const old = oldIndex.get(id);
           if (!old) {
-            notifyChange("New task", `"${title}" added to ${column}`);
+            notifyChange(`New task: ${title}`, `Added to ${column}`);
           } else if (old.column !== column) {
-            notifyChange("Task moved", `"${title}" moved from ${old.column} to ${column}`);
+            notifyChange(`${title}`, `Moved from ${old.column} → ${column}`);
           }
         }
       }
@@ -121,7 +128,7 @@ export default function Home() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [buildItemIndex, notifyChange]);
+  }, [buildItemIndex, notifyChange, notificationsEnabled]);
 
   // Fetch board when workspaces are loaded
   useEffect(() => {
@@ -176,6 +183,12 @@ export default function Home() {
         onListRemoved={fetchBoard}
         user={user}
         onLogout={handleLogout}
+        notificationsEnabled={notificationsEnabled}
+        onToggleNotifications={() => {
+          const next = !notificationsEnabled;
+          setNotificationsEnabled(next);
+          localStorage.setItem("notificationsEnabled", String(next));
+        }}
       />
 
       {error && (
