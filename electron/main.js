@@ -64,18 +64,21 @@ function waitForServer(port, retries = 60) {
 
 function startNextServer(port) {
   const isProd = app.isPackaged;
-  const appPath = isProd
-    ? path.join(process.resourcesPath, "app")
-    : path.join(__dirname, "..");
-
-  const nextBin = path.join(appPath, "node_modules", ".bin", "next");
 
   if (isProd) {
-    nextServer = spawn(nextBin, ["start", "-p", String(port)], {
-      cwd: appPath,
-      env: { ...process.env, PORT: String(port) },
+    // Standalone mode: run the self-contained server.js
+    const serverPath = path.join(process.resourcesPath, "standalone", "server.js");
+    nextServer = spawn(process.execPath, [serverPath], {
+      cwd: path.join(process.resourcesPath, "standalone"),
+      env: {
+        ...process.env,
+        PORT: String(port),
+        HOSTNAME: "localhost",
+      },
     });
   } else {
+    const appPath = path.join(__dirname, "..");
+    const nextBin = path.join(appPath, "node_modules", ".bin", "next");
     nextServer = spawn(nextBin, ["dev", "-p", String(port)], {
       cwd: appPath,
       env: { ...process.env, PORT: String(port) },
