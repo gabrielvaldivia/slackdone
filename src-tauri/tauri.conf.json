@@ -7,19 +7,7 @@
     "frontendDist": "https://slackdone.vercel.app"
   },
   "app": {
-    "windows": [
-      {
-        "label": "main",
-        "title": "Slackdone",
-        "width": 1280,
-        "height": 800,
-        "minWidth": 400,
-        "minHeight": 600,
-        "titleBarStyle": "Overlay",
-        "hiddenTitle": true,
-        "decorations": true
-      }
-    ],
+    "windows": [],
     "security": {
       "csp": null
     }
