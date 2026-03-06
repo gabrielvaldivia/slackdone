@@ -1090,9 +1090,9 @@ export default function Board({ data, onRefresh }: BoardProps) {
       )}
 
       <div className="flex flex-col gap-2 px-4 pt-3">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
           {/* Left: Search + Filters toggle */}
-          <div className="relative">
+          <div className="relative shrink-0">
             <svg
               width="12"
               height="12"
@@ -1129,7 +1129,7 @@ export default function Board({ data, onRefresh }: BoardProps) {
 
           <button
             onClick={() => setFiltersOpen((v) => !v)}
-            className={`inline-flex items-center gap-1.5 rounded-full pl-3 py-1 text-xs font-medium transition-colors ${
+            className={`shrink-0 inline-flex items-center gap-1.5 rounded-full pl-3 py-1 text-xs font-medium transition-colors ${
               hasActiveFilters && !filtersOpen ? "pr-1.5" : "pr-3"
             } ${
               filtersOpen || hasActiveFilters
@@ -1153,9 +1153,9 @@ export default function Board({ data, onRefresh }: BoardProps) {
           {/* Divider + Saved views */}
           {savedViews.length > 0 && (
             <>
-              <div className="h-4 w-px bg-gray-200" />
+              <div className="h-4 w-px shrink-0 bg-gray-200" />
               {savedViews.map((view) => (
-                <div key={view.id} className="relative" ref={viewMenuOpen === view.id ? viewMenuRef : undefined}>
+                <div key={view.id} className="relative shrink-0" ref={viewMenuOpen === view.id ? viewMenuRef : undefined}>
                   <button
                     onClick={() => handleLoadView(view)}
                     onContextMenu={(e) => {
@@ -1200,7 +1200,7 @@ export default function Board({ data, onRefresh }: BoardProps) {
           {showSaveView && !savingView && (
             <button
               onClick={() => setSavingView(true)}
-              className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-600 transition-colors hover:bg-blue-100"
+              className="shrink-0 inline-flex items-center gap-1 rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-600 transition-colors hover:bg-blue-100"
             >
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
@@ -1212,7 +1212,7 @@ export default function Board({ data, onRefresh }: BoardProps) {
           )}
           {savingView && (
             <form
-              className="inline-flex items-center gap-1"
+              className="shrink-0 inline-flex items-center gap-1"
               onSubmit={(e) => { e.preventDefault(); handleSaveView(); }}
             >
               <input
@@ -1244,7 +1244,7 @@ export default function Board({ data, onRefresh }: BoardProps) {
 
         {/* Collapsible filter row: Assignee, Client, Show Hidden, Properties */}
         {filtersOpen && (
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
             {assigneeOptions.length > 0 && (
               <FilterDropdown
                 label="Assignee"
@@ -1264,7 +1264,7 @@ export default function Board({ data, onRefresh }: BoardProps) {
             {hiddenCount > 0 && (
               <button
                 onClick={() => setShowHidden((v) => !v)}
-                className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-200"
+                className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-200"
               >
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   {showHidden ? (
@@ -1278,7 +1278,7 @@ export default function Board({ data, onRefresh }: BoardProps) {
             )}
 
             {/* Properties */}
-            <div className="relative" ref={propsRef}>
+            <div className="relative shrink-0" ref={propsRef}>
               <button
                 onClick={() => setPropsOpen((v) => !v)}
                 className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
