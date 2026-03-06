@@ -1449,28 +1449,29 @@ export default function Board({ data, onRefresh }: BoardProps) {
 
           {/* Save / update view */}
           {showSaveView && !savingView && activeViewId && (
-            <button
-              onClick={handleUpdateActiveView}
-              className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-600 transition-colors hover:bg-blue-100"
-            >
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-                <polyline points="17 21 17 13 7 13 7 21" />
-                <polyline points="7 3 7 8 15 8" />
-              </svg>
-              Save changes
-            </button>
+            <div className="shrink-0 inline-flex items-center gap-2 ml-2">
+              <button
+                onClick={handleUpdateActiveView}
+                className="text-xs font-medium text-blue-600 hover:text-blue-700 transition-colors"
+              >
+                Save
+              </button>
+              <button
+                onClick={() => {
+                  const view = savedViews.find((v) => v.id === activeViewId);
+                  if (view) handleLoadView(view);
+                }}
+                className="text-xs font-medium text-gray-500 hover:text-gray-700 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
           )}
           {showSaveView && !savingView && !activeViewId && (
             <button
               onClick={() => setSavingView(true)}
-              className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-600 transition-colors hover:bg-blue-100"
+              className="shrink-0 inline-flex items-center gap-1 rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-600 transition-colors hover:bg-blue-100"
             >
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-                <polyline points="17 21 17 13 7 13 7 21" />
-                <polyline points="7 3 7 8 15 8" />
-              </svg>
               Save view
             </button>
           )}
