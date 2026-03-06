@@ -89,7 +89,7 @@ export default function FilterDropdown({
       {open && createPortal(
         <div
           ref={menuRef}
-          className="fixed z-50 w-56 rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
+          className="fixed z-50 w-56 rounded-lg ring-1 ring-border bg-white py-1 shadow-lg"
           style={{ top: menuPos.top, left: menuPos.left }}
         >
           {options.length === 0 && (

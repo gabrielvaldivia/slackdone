@@ -213,7 +213,7 @@ export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDe
         <div className="flex items-center gap-0.5">
           <button
             onClick={() => setTopFormOpen(true)}
-            className="rounded p-1 text-gray-400 opacity-0 transition-opacity hover:text-gray-600 group-hover/col:opacity-100"
+            className="rounded p-1 text-gray-400 sm:opacity-0 transition-opacity hover:text-gray-600 group-hover/col:opacity-100"
             title="Add item"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -225,7 +225,7 @@ export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDe
           <div className="relative" ref={menuRef}>
             <button
               onClick={() => setMenuOpen((v) => !v)}
-              className="rounded p-1 text-gray-400 opacity-0 transition-opacity hover:text-gray-600 group-hover/col:opacity-100"
+              className="rounded p-1 text-gray-400 sm:opacity-0 transition-opacity hover:text-gray-600 group-hover/col:opacity-100"
               title="Column options"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
@@ -235,7 +235,7 @@ export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDe
               </svg>
             </button>
             {menuOpen && (
-              <div className="absolute right-0 top-8 z-50 min-w-[140px] rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+              <div className="absolute right-0 top-8 z-50 min-w-[140px] rounded-lg ring-1 ring-border bg-white py-1 shadow-lg">
                 {onMinimize && (
                   <button
                     onClick={() => { onMinimize(); setMenuOpen(false); }}

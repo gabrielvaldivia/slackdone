@@ -9,14 +9,12 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SheetFooter,
 } from "@/components/ui/sheet";
 import {
   Drawer,
   DrawerContent,
   DrawerHeader,
   DrawerTitle,
-  DrawerFooter,
 } from "@/components/ui/drawer";
 import {
   Popover,
@@ -61,6 +59,7 @@ export default function CardDetailModal({
 }: CardDetailModalProps) {
   const [title, setTitle] = useState(item.title);
   const [assigneePopoverOpen, setAssigneePopoverOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const isDesktop = useMediaQuery("(min-width: 640px)");
 
   useEffect(() => {
@@ -131,20 +130,53 @@ export default function CardDetailModal({
   }, [title]);
 
   const titleArea = (
-    <textarea
-      ref={setTitleRef}
-      value={title}
-      onChange={(e) => { setTitle(e.target.value); }}
-      onBlur={handleTitleBlur}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" && !e.shiftKey) {
-          e.preventDefault();
-          handleTitleBlur();
-        }
-      }}
-      rows={1}
-      className="w-full resize-none bg-transparent text-lg font-semibold outline-none overflow-hidden"
-    />
+    <div className="flex items-start gap-2">
+      <textarea
+        ref={setTitleRef}
+        value={title}
+        onChange={(e) => { setTitle(e.target.value); }}
+        onBlur={handleTitleBlur}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            handleTitleBlur();
+          }
+        }}
+        rows={1}
+        className="flex-1 resize-none bg-transparent text-lg font-semibold outline-none overflow-hidden"
+      />
+      {onDelete && (
+        <Popover open={menuOpen} onOpenChange={setMenuOpen}>
+          <PopoverTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-muted-foreground">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="12" cy="5" r="2" />
+                <circle cx="12" cy="12" r="2" />
+                <circle cx="12" cy="19" r="2" />
+              </svg>
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-40 p-1" align="end">
+            <button
+              className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-destructive hover:bg-destructive/10"
+              onClick={() => {
+                setMenuOpen(false);
+                if (window.confirm("Delete this item?")) {
+                  onDelete();
+                  onClose();
+                }
+              }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="3 6 5 6 21 6" />
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+              </svg>
+              Delete item
+            </button>
+          </PopoverContent>
+        </Popover>
+      )}
+    </div>
   );
 
   const body = (
@@ -251,36 +283,15 @@ export default function CardDetailModal({
     </div>
   );
 
-  const footer = onDelete ? (
-    <Button
-      variant="ghost"
-      size="sm"
-      className="text-destructive hover:text-destructive hover:bg-destructive/10"
-      onClick={() => {
-        if (window.confirm("Delete this item?")) {
-          onDelete();
-          onClose();
-        }
-      }}
-    >
-      Delete item
-    </Button>
-  ) : null;
-
   if (isDesktop) {
     return (
       <Sheet open onOpenChange={(open) => { if (!open) onClose(); }}>
-        <SheetContent className="flex flex-col overflow-hidden sm:max-w-lg p-0">
+        <SheetContent showCloseButton={false} className="flex flex-col overflow-hidden sm:max-w-lg p-0">
           <SheetHeader className="px-6 pt-6 pb-0 space-y-0">
             <SheetTitle className="sr-only">Edit task</SheetTitle>
             {titleArea}
           </SheetHeader>
           {body}
-          {footer && (
-            <SheetFooter className="border-t px-6 py-4">
-              {footer}
-            </SheetFooter>
-          )}
         </SheetContent>
       </Sheet>
     );
@@ -294,11 +305,6 @@ export default function CardDetailModal({
           {titleArea}
         </DrawerHeader>
         {body}
-        {footer && (
-          <DrawerFooter className="border-t px-6 py-4">
-            {footer}
-          </DrawerFooter>
-        )}
       </DrawerContent>
     </Drawer>
   );

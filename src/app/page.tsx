@@ -122,7 +122,7 @@ export default function Home() {
   const showEmptyState = !loading && (!boardData || !hasLists);
 
   return (
-    <div className="flex h-screen flex-col">
+    <div className="flex h-dvh flex-col">
       <Header
         workspaces={workspaces}
         onConnect={handleConnect}

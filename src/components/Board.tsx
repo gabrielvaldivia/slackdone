@@ -1179,7 +1179,7 @@ export default function Board({ data, onRefresh }: BoardProps) {
       )}
 
       <div className="flex flex-col gap-2 px-4 pt-3">
-        <FadeScroll className="flex items-center gap-2">
+        <FadeScroll className="flex items-center gap-2 py-0.5 -my-0.5 px-0.5 -mx-0.5">
           {/* Search */}
           {mobileSearchOpen ? (
             <div className="relative shrink-0 sm:hidden">
@@ -1243,30 +1243,6 @@ export default function Board({ data, onRefresh }: BoardProps) {
             )}
           </div>
 
-          {/* Filters - icon only on mobile */}
-          <button
-            onClick={() => setFiltersOpen((v) => !v)}
-            className={`inline-flex shrink-0 items-center justify-center gap-1.5 rounded-full text-xs font-medium transition-colors h-7 w-7 sm:h-auto sm:w-auto sm:pl-3 sm:py-1 ${
-              hasActiveFilters && !filtersOpen ? "sm:pr-1.5" : "sm:pr-3"
-            } ${
-              filtersOpen || hasActiveFilters
-                ? "bg-blue-100 text-blue-700"
-                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-            }`}
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="4" y1="6" x2="20" y2="6" />
-              <line x1="6" y1="12" x2="18" y2="12" />
-              <line x1="8" y1="18" x2="16" y2="18" />
-            </svg>
-            <span className="hidden sm:inline">Filters</span>
-            {hasActiveFilters && !filtersOpen && (
-              <span className="hidden sm:flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 text-[9px] text-white">
-                {filterAssignees.size + filterClients.size + fieldFilterCount}
-              </span>
-            )}
-          </button>
-
           {/* Properties - icon only on mobile */}
           <div className="shrink-0">
             <button
@@ -1291,7 +1267,7 @@ export default function Board({ data, onRefresh }: BoardProps) {
             {propsOpen && createPortal(
               <div
                 ref={propsMenuRef}
-                className="fixed z-50 w-56 rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
+                className="fixed z-50 w-56 rounded-lg ring-1 ring-border bg-white py-1 shadow-lg"
                 style={{
                   top: (propsButtonRef.current?.getBoundingClientRect().bottom ?? 0) + 4,
                   left: propsButtonRef.current?.getBoundingClientRect().left ?? 0,
@@ -1319,6 +1295,30 @@ export default function Board({ data, onRefresh }: BoardProps) {
               document.body
             )}
           </div>
+
+          {/* Filters - icon only on mobile */}
+          <button
+            onClick={() => setFiltersOpen((v) => !v)}
+            className={`inline-flex shrink-0 items-center justify-center gap-1.5 rounded-full text-xs font-medium transition-colors h-7 w-7 sm:h-auto sm:w-auto sm:pl-3 sm:py-1 ${
+              hasActiveFilters && !filtersOpen ? "sm:pr-1.5" : "sm:pr-3"
+            } ${
+              filtersOpen || hasActiveFilters
+                ? "bg-blue-100 text-blue-700"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            }`}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="4" y1="6" x2="20" y2="6" />
+              <line x1="6" y1="12" x2="18" y2="12" />
+              <line x1="8" y1="18" x2="16" y2="18" />
+            </svg>
+            <span className="hidden sm:inline">Filters</span>
+            {hasActiveFilters && !filtersOpen && (
+              <span className="hidden sm:flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 text-[9px] text-white">
+                {filterAssignees.size + filterClients.size + fieldFilterCount}
+              </span>
+            )}
+          </button>
 
           {/* Divider + Saved views */}
           {savedViews.length > 0 && (
@@ -1348,7 +1348,7 @@ export default function Board({ data, onRefresh }: BoardProps) {
                     &times;
                   </button>
                   {viewMenuOpen === view.id && (
-                    <div className="absolute left-0 top-full z-50 mt-1 min-w-[120px] rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                    <div className="absolute left-0 top-full z-50 mt-1 min-w-[120px] rounded-lg ring-1 ring-border bg-white py-1 shadow-lg">
                       <button
                         onClick={() => handleDeleteView(view.id)}
                         className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50"

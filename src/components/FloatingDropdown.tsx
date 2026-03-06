@@ -49,7 +49,7 @@ export default function FloatingDropdown({
             ref={refs.setFloating}
             style={floatingStyles}
             {...getFloatingProps()}
-            className="z-50 w-52 rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
+            className="z-50 w-52 rounded-lg ring-1 ring-border bg-white py-1 shadow-lg"
           >
             {children}
           </div>

@@ -96,7 +96,7 @@ export default function Header({
               Lists
             </button>
             {listsOpen && <div className="absolute right-0 top-full z-10 min-w-[240px] pt-1">
-              <div className="rounded-md border border-border bg-white shadow-md">
+              <div className="rounded-md ring-1 ring-border bg-white shadow-md">
                 {(() => {
                   // Group lists by workspace, include workspaces with no lists
                   const grouped = new Map<string, { workspaceId: string; workspaceName: string; lists: ListInfo[] }>();
@@ -197,7 +197,7 @@ export default function Header({
             </button>
             {userMenuOpen && (
               <div className="absolute right-0 top-full z-10 min-w-[120px] pt-1">
-                <div className="rounded-md border border-border bg-white shadow-md">
+                <div className="rounded-md ring-1 ring-border bg-white shadow-md">
                   <a
                     href="/docs"
                     className="block w-full px-3 py-2 text-xs text-left hover:bg-gray-50"
