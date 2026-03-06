@@ -2,10 +2,15 @@
 
 use tauri::Manager;
 use tauri::webview::WebviewWindowBuilder;
+use tauri_plugin_opener::OpenerExt;
+use tauri_plugin_deep_link::DeepLinkExt;
+use url::Url;
 
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.set_focus();
@@ -14,19 +19,66 @@ fn main() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
             let url = tauri::WebviewUrl::External("https://slackdone.vercel.app".parse().unwrap());
+            let handle = app.handle().clone();
             WebviewWindowBuilder::new(app, "main", url)
                 .title("Slackdone")
                 .inner_size(1280.0, 800.0)
                 .min_inner_size(400.0, 600.0)
                 .title_bar_style(tauri::TitleBarStyle::Overlay)
                 .hidden_title(true)
-                .on_navigation(|url| {
-                    let host = url.host_str().unwrap_or("");
-                    host.ends_with("slackdone.vercel.app")
-                        || host.ends_with("slack.com")
-                        || host == "localhost"
+                .on_navigation(move |nav_url| {
+                    let host = nav_url.host_str().unwrap_or("");
+                    let path = nav_url.path();
+
+                    // Intercept auth routes and redirect to browser with ?source=desktop
+                    if host.ends_with("slackdone.vercel.app")
+                        && (path == "/api/auth/login" || path == "/api/auth/install")
+                    {
+                        let mut auth_url = nav_url.clone();
+                        auth_url.query_pairs_mut().append_pair("source", "desktop");
+                        let _ = handle.opener().open_url(auth_url.as_str(), None::<&str>);
+                        return false;
+                    }
+
+                    // Block any direct Slack navigation (shouldn't happen now, but just in case)
+                    if host.ends_with("slack.com") {
+                        let _ = handle.opener().open_url(nav_url.as_str(), None::<&str>);
+                        return false;
+                    }
+
+                    true
                 })
                 .build()?;
+
+            // Handle deep links (slackdone://auth/session?token=...)
+            let handle = app.handle().clone();
+            app.deep_link().on_open_url(move |event| {
+                for deep_url in event.urls() {
+                    if let Ok(parsed) = Url::parse(deep_url.as_str()) {
+                        if parsed.scheme() == "slackdone" {
+                            if let Some(window) = handle.get_webview_window("main") {
+                                let path = parsed.path().trim_start_matches('/');
+                                if path == "auth/session" || path == "session" {
+                                    if let Some(token) = parsed.query_pairs()
+                                        .find(|(k, _)| k == "token")
+                                        .map(|(_, v)| v.to_string())
+                                    {
+                                        let js = format!(
+                                            "document.cookie = 'session={}; path=/; max-age=604800'; window.location.reload();",
+                                            token.replace('\'', "\\'")
+                                        );
+                                        let _ = window.eval(&js);
+                                    }
+                                } else {
+                                    let _ = window.eval("window.location.reload();");
+                                }
+                                let _ = window.set_focus();
+                            }
+                        }
+                    }
+                }
+            });
+
             Ok(())
         })
         .run(tauri::generate_context!())

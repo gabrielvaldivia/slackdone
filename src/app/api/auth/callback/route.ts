@@ -35,6 +35,10 @@ export async function GET(request: NextRequest) {
       userToken,
     });
 
+    const state = request.nextUrl.searchParams.get("state");
+    if (state === "desktop") {
+      return NextResponse.redirect(`${baseUrl}/auth/desktop?action=complete`);
+    }
     return NextResponse.redirect(`${baseUrl}?workspace=${team.id}`);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

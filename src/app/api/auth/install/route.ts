@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const clientId = process.env.SLACK_CLIENT_ID;
   if (!clientId) {
     return NextResponse.json(
@@ -10,6 +10,7 @@ export async function GET() {
   }
 
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+  const source = request.nextUrl.searchParams.get("source") || "";
   const botScopes = "lists:read,lists:write,team:read,users:read";
   const userScopes = "lists:read,lists:write,users:read";
   const redirectUri = `${baseUrl}/api/auth/callback`;
@@ -19,6 +20,9 @@ export async function GET() {
   url.searchParams.set("scope", botScopes);
   url.searchParams.set("user_scope", userScopes);
   url.searchParams.set("redirect_uri", redirectUri);
+  if (source === "desktop") {
+    url.searchParams.set("state", "desktop");
+  }
 
   return NextResponse.redirect(url.toString());
 }

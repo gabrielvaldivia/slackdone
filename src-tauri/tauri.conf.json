@@ -28,6 +28,11 @@
     }
   },
   "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": ["slackdone"]
+      }
+    },
     "updater": {
       "pubkey": "",
       "endpoints": [

@@ -75,6 +75,19 @@ export default function Home() {
     }
   }, []);
 
+  // Re-check auth when app regains focus (for OAuth completed in external browser)
+  useEffect(() => {
+    const onFocus = () => {
+      fetchWorkspaces();
+      fetch("/api/auth/me")
+        .then((res) => res.json())
+        .then((data) => { if (data.user) setUser(data.user); })
+        .catch(() => {});
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [fetchWorkspaces]);
+
   // Build a map of itemId → columnName from board data
   const buildItemIndex = useCallback((columns: BoardColumn[]) => {
     const index = new Map<string, { title: string; column: string }>();

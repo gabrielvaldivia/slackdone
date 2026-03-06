@@ -59,6 +59,13 @@ export async function GET(request: NextRequest) {
 
     // Create session cookie
     const token = await createSession({ userId, name, avatar });
+    const state = request.nextUrl.searchParams.get("state");
+    if (state === "desktop") {
+      // Redirect to intermediate page that triggers the deep link
+      return NextResponse.redirect(
+        `${baseUrl}/auth/desktop?action=session&token=${encodeURIComponent(token)}`
+      );
+    }
     const response = NextResponse.redirect(baseUrl);
     response.cookies.set(sessionCookieName(), token, sessionCookieOptions());
     return response;
