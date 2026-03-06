@@ -148,6 +148,11 @@ export default function Board({ data, onRefresh }: BoardProps) {
   const saveInputRef = useRef<HTMLInputElement>(null);
   const [viewMenuOpen, setViewMenuOpen] = useState<string | null>(null);
   const viewMenuRef = useRef<HTMLDivElement>(null);
+  const viewMenuTriggerRef = useRef<HTMLSpanElement>(null);
+  const [viewMenuPos, setViewMenuPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
+  const [renamingViewId, setRenamingViewId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const renameInputRef = useRef<HTMLInputElement>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [propsOpen, setPropsOpen] = useState(false);
   const [visibleCardProps, setVisibleCardProps] = useState<string[] | null>(loadCardProperties);
@@ -225,6 +230,11 @@ export default function Board({ data, onRefresh }: BoardProps) {
     }
     return defaults;
   }, [visibleCardProps, availableCardProps]);
+
+  // Whether any client-labeled property is enabled in Properties
+  const showClientOnCards = useMemo(() => {
+    return availableCardProps.some((p) => p.label.toLowerCase() === "client" && effectiveCardProps.has(p.key));
+  }, [availableCardProps, effectiveCardProps]);
 
   // Close props dropdown on outside click
   useEffect(() => {
@@ -483,7 +493,22 @@ export default function Board({ data, onRefresh }: BoardProps) {
     return true;
   }, [activeViewId, savedViews, filterAssignees, filterClients, fieldFilters, activeFieldFilterKeys, effectiveCardProps]);
 
-  const showSaveView = hasActiveFilters && !filtersMatchActiveView;
+  const showSaveView = (hasActiveFilters || activeViewId) && !filtersMatchActiveView;
+
+  const handleUpdateActiveView = useCallback(() => {
+    if (!activeViewId) return;
+    const serializedFilters: Record<string, string[]> = {};
+    for (const key of activeFieldFilterKeys) {
+      serializedFilters[key] = [...fieldFilters[key]];
+    }
+    const next = savedViews.map((v) =>
+      v.id === activeViewId
+        ? { ...v, assignees: [...filterAssignees], clients: [...filterClients], filters: serializedFilters, properties: [...effectiveCardProps] }
+        : v
+    );
+    setSavedViews(next);
+    saveViews(next);
+  }, [activeViewId, filterAssignees, filterClients, fieldFilters, activeFieldFilterKeys, effectiveCardProps, savedViews]);
 
   const handleSaveView = useCallback(() => {
     const name = viewName.trim();
@@ -540,13 +565,25 @@ export default function Board({ data, onRefresh }: BoardProps) {
     setViewMenuOpen(null);
   };
 
+  const handleRenameView = (id: string) => {
+    const name = renameValue.trim();
+    if (!name) return;
+    const next = savedViews.map((v) => v.id === id ? { ...v, name } : v);
+    setSavedViews(next);
+    saveViews(next);
+    setRenamingViewId(null);
+    setRenameValue("");
+  };
+
   // Close view context menu on outside click
   useEffect(() => {
     if (!viewMenuOpen) return;
     const handler = (e: MouseEvent) => {
-      if (viewMenuRef.current && !viewMenuRef.current.contains(e.target as Node)) {
-        setViewMenuOpen(null);
-      }
+      if (
+        viewMenuRef.current?.contains(e.target as Node) ||
+        viewMenuTriggerRef.current?.contains(e.target as Node)
+      ) return;
+      setViewMenuOpen(null);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -1325,49 +1362,106 @@ export default function Board({ data, onRefresh }: BoardProps) {
             <>
               <div className="h-4 w-px bg-gray-200" />
               {savedViews.map((view) => (
-                <div key={view.id} className="relative" ref={viewMenuOpen === view.id ? viewMenuRef : undefined}>
-                  <button
-                    onClick={() => handleLoadView(view)}
-                    onContextMenu={(e) => {
-                      e.preventDefault();
-                      setViewMenuOpen(view.id);
-                    }}
-                    className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                      activeViewId === view.id
-                        ? "bg-blue-100 text-blue-700 ring-1 ring-blue-300"
-                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                    }`}
-                  >
-                    {view.name}
-                  </button>
-                  <button
-                    onClick={() => setViewMenuOpen(viewMenuOpen === view.id ? null : view.id)}
-                    className="absolute -right-1 -top-1 hidden h-4 w-4 items-center justify-center rounded-full bg-gray-300 text-[8px] text-gray-600 hover:bg-gray-400 group-hover:flex"
-                    style={{ display: viewMenuOpen === view.id || activeViewId === view.id ? undefined : "none" }}
-                  >
-                    &times;
-                  </button>
-                  {viewMenuOpen === view.id && (
-                    <div className="absolute left-0 top-full z-50 mt-1 min-w-[120px] rounded-lg ring-1 ring-border bg-white py-1 shadow-lg">
+                <div key={view.id} className="shrink-0">
+                  {renamingViewId === view.id ? (
+                    <form
+                      className="inline-flex items-center gap-1"
+                      onSubmit={(e) => { e.preventDefault(); handleRenameView(view.id); }}
+                    >
+                      <input
+                        ref={renameInputRef}
+                        type="text"
+                        value={renameValue}
+                        onChange={(e) => setRenameValue(e.target.value)}
+                        className="h-6 w-28 rounded-full border border-blue-300 px-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+                        onKeyDown={(e) => { if (e.key === "Escape") { setRenamingViewId(null); setRenameValue(""); } }}
+                        onBlur={() => { if (renameValue.trim()) handleRenameView(view.id); else { setRenamingViewId(null); setRenameValue(""); } }}
+                      />
+                    </form>
+                  ) : (
+                    <button
+                      onClick={() => handleLoadView(view)}
+                      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                        activeViewId === view.id
+                          ? "bg-blue-100 text-blue-700 ring-1 ring-blue-300"
+                          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                      }`}
+                    >
+                      {view.name}
+                      {activeViewId === view.id && (
+                        <span
+                          ref={viewMenuTriggerRef}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                            setViewMenuPos({ top: rect.bottom + 4, left: rect.left });
+                            setViewMenuOpen(viewMenuOpen === view.id ? null : view.id);
+                          }}
+                          className="flex items-center justify-center -mr-1 h-4 w-4 rounded-full hover:bg-blue-200 transition-colors"
+                        >
+                          <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor">
+                            <circle cx="8" cy="3" r="1.5" />
+                            <circle cx="8" cy="8" r="1.5" />
+                            <circle cx="8" cy="13" r="1.5" />
+                          </svg>
+                        </span>
+                      )}
+                    </button>
+                  )}
+                  {viewMenuOpen === view.id && createPortal(
+                    <div
+                      ref={viewMenuRef}
+                      className="fixed z-50 min-w-[120px] rounded-lg ring-1 ring-border bg-white p-1 shadow-lg"
+                      style={{ top: viewMenuPos.top, left: viewMenuPos.left }}
+                    >
+                      <button
+                        onClick={() => {
+                          setRenameValue(view.name);
+                          setRenamingViewId(view.id);
+                          setViewMenuOpen(null);
+                          setTimeout(() => renameInputRef.current?.focus(), 0);
+                        }}
+                        className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-gray-700 hover:bg-gray-100"
+                      >
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                        </svg>
+                        Rename
+                      </button>
                       <button
                         onClick={() => handleDeleteView(view.id)}
-                        className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50"
+                        className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-red-600 hover:bg-red-50"
                       >
                         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <polyline points="3 6 5 6 21 6" />
                           <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
                         </svg>
-                        Delete view
+                        Delete
                       </button>
-                    </div>
+                    </div>,
+                    document.body
                   )}
                 </div>
               ))}
             </>
           )}
 
-          {/* Save view */}
-          {showSaveView && !savingView && (
+          {/* Save / update view */}
+          {showSaveView && !savingView && activeViewId && (
+            <button
+              onClick={handleUpdateActiveView}
+              className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-600 transition-colors hover:bg-blue-100"
+            >
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                <polyline points="17 21 17 13 7 13 7 21" />
+                <polyline points="7 3 7 8 15 8" />
+              </svg>
+              Save changes
+            </button>
+          )}
+          {showSaveView && !savingView && !activeViewId && (
             <button
               onClick={() => setSavingView(true)}
               className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-600 transition-colors hover:bg-blue-100"
@@ -1486,6 +1580,7 @@ export default function Board({ data, onRefresh }: BoardProps) {
               defaultAssignees={filterAssignees.size > 0 ? filterAssignees : undefined}
               defaultClient={filterClients.size === 1 ? [...filterClients][0] : null}
               visibleProperties={effectiveCardProps}
+              showClient={showClientOnCards}
               onColumnDragStart={() => handleColumnDragStart(column.id)}
               onColumnDragEnd={handleColumnDragEnd}
               onColumnDrop={() => handleColumnDrop(column.id)}
@@ -1511,6 +1606,7 @@ export default function Board({ data, onRefresh }: BoardProps) {
               assigneeOptions={assigneeOptions}
               clientOptions={clientOptions}
               visibleProperties={effectiveCardProps}
+              showClient={showClientOnCards}
             />
           );
         })}

@@ -8,6 +8,7 @@ interface CardProps {
   columnId: string;
   clientColorMap?: Map<string, { bg: string; text: string }>;
   visibleProperties?: Set<string>;
+  showClient?: boolean;
   onDelete?: () => void;
   onRename?: (newTitle: string) => void;
   onClick?: () => void;
@@ -46,7 +47,7 @@ export function getClientName(item: BoardItem): string {
   return item.workspaceName || "";
 }
 
-export default function Card({ item, columnId, clientColorMap, visibleProperties, onDelete, onRename, onClick }: CardProps) {
+export default function Card({ item, columnId, clientColorMap, visibleProperties, showClient, onDelete, onRename, onClick }: CardProps) {
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(item.title);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -87,7 +88,7 @@ export default function Card({ item, columnId, clientColorMap, visibleProperties
   const hasExplicitClient = (item.fields || []).some(
     (f) => f.label.toLowerCase() === "client" && f.displayValue && !/^Opt[A-Z0-9]+$/.test(f.displayValue)
   );
-  const workspaceFallback = !hasExplicitClient ? (item.workspaceName || null) : null;
+  const workspaceFallback = (showClient ?? true) && !hasExplicitClient ? (item.workspaceName || null) : null;
 
   const hasFooter = (showAssignees && assignees.length > 0) || visibleFields.length > 0 || !!workspaceFallback;
 

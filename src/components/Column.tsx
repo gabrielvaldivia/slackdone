@@ -36,13 +36,14 @@ interface ColumnProps {
   defaultAssignees?: Set<string>;
   defaultClient?: string | null;
   visibleProperties?: Set<string>;
+  showClient?: boolean;
   onColumnDragStart?: () => void;
   onColumnDragEnd?: () => void;
   onColumnDrop?: () => void;
   isColumnDragging?: boolean;
 }
 
-export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDeleteItem, onRenameItem, onCardClick, onHide, onMinimize, onExpand, minimized, onUnhide, clientColorMap, assigneeOptions, clientOptions, defaultAssignees, defaultClient, visibleProperties, onColumnDragStart, onColumnDragEnd, onColumnDrop, isColumnDragging }: ColumnProps) {
+export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDeleteItem, onRenameItem, onCardClick, onHide, onMinimize, onExpand, minimized, onUnhide, clientColorMap, assigneeOptions, clientOptions, defaultAssignees, defaultClient, visibleProperties, showClient, onColumnDragStart, onColumnDragEnd, onColumnDrop, isColumnDragging }: ColumnProps) {
   const [dragOver, setDragOver] = useState(false);
   const [columnDragOver, setColumnDragOver] = useState(false);
   const [dropIndex, setDropIndex] = useState<number | null>(null);
@@ -295,6 +296,7 @@ export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDe
               columnId={column.id}
               clientColorMap={clientColorMap}
               visibleProperties={visibleProperties}
+              showClient={showClient}
               onDelete={() => onDeleteItem(item.id, column.id)}
               onRename={(newTitle) => onRenameItem(item.id, newTitle)}
               onClick={() => onCardClick?.(item)}
