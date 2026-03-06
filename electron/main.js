@@ -1,7 +1,8 @@
-const { app, BrowserWindow, shell } = require("electron");
+const { app, BrowserWindow, shell, dialog } = require("electron");
 const { spawn } = require("child_process");
 const path = require("path");
 const net = require("net");
+const { autoUpdater } = require("electron-updater");
 
 let mainWindow;
 let nextServer;
@@ -133,6 +134,35 @@ function createWindow(port) {
   });
 }
 
+function setupAutoUpdater() {
+  if (!app.isPackaged) return;
+
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  autoUpdater.on("update-downloaded", (info) => {
+    dialog
+      .showMessageBox(mainWindow, {
+        type: "info",
+        title: "Update Ready",
+        message: `Version ${info.version} has been downloaded.`,
+        detail: "The update will be installed when you restart the app.",
+        buttons: ["Restart Now", "Later"],
+        defaultId: 0,
+      })
+      .then(({ response }) => {
+        if (response === 0) {
+          autoUpdater.quitAndInstall();
+        }
+      });
+  });
+
+  autoUpdater.checkForUpdatesAndNotify();
+
+  // Check again every 30 minutes
+  setInterval(() => autoUpdater.checkForUpdatesAndNotify(), 30 * 60 * 1000);
+}
+
 app.on("ready", async () => {
   // In dev, try to connect to an existing Next.js dev server first
   if (!app.isPackaged) {
@@ -149,6 +179,7 @@ app.on("ready", async () => {
   startNextServer(port);
   await waitForServer(port);
   createWindow(port);
+  setupAutoUpdater();
 });
 
 app.on("window-all-closed", () => {

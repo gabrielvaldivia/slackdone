@@ -16,8 +16,13 @@
     "appId": "com.slackdone.app",
     "productName": "Slackdone",
     "mac": {
-      "target": "dmg",
+      "target": ["dmg", "zip"],
       "category": "public.app-category.productivity"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "gabrielvaldivia",
+      "repo": "slackdone"
     },
     "files": [
       "electron/**/*",
@@ -47,6 +52,7 @@
     "clsx": "^2.1.1",
     "dialkit": "^1.0.0",
     "dotenv": "^17.3.1",
+    "electron-updater": "^6.8.3",
     "firebase": "^12.9.0",
     "lucide-react": "^0.577.0",
     "motion": "^12.35.0",

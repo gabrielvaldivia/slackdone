@@ -23,7 +23,8 @@ jobs:
 
       - run: npx next build
 
-      - run: npx electron-builder --mac --publish never
+      - name: Build and publish
+        run: npx electron-builder --mac --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -31,11 +32,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: slackdone-mac
-          path: dist/*.dmg
-
-      - name: Create release
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: dist/*.dmg
-          generate_release_notes: true
+          path: |
+            dist/*.dmg
+            dist/*.zip
+            dist/latest-mac.yml
