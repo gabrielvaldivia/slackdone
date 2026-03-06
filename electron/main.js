@@ -1,5 +1,5 @@
 const { app, BrowserWindow, shell, dialog } = require("electron");
-const { spawn } = require("child_process");
+const { spawn, execFileSync } = require("child_process");
 const path = require("path");
 const net = require("net");
 const { autoUpdater } = require("electron-updater");
@@ -7,11 +7,14 @@ const { autoUpdater } = require("electron-updater");
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
   app.quit();
+  // Force exit immediately — don't let macOS retry
+  process.exit(0);
 }
 
 let mainWindow;
 let nextServer;
 let activePort;
+let appReady = false;
 const DEV_PORT = 3000;
 const PROD_PORT = 3033;
 
@@ -75,14 +78,51 @@ function waitForServer(port, retries = 60) {
   });
 }
 
+// Find a working node binary for running the standalone server
+function findNodeBinary() {
+  // Try common locations
+  const candidates = [
+    "/usr/local/bin/node",
+    "/opt/homebrew/bin/node",
+    "/usr/bin/node",
+  ];
+  for (const candidate of candidates) {
+    try {
+      execFileSync(candidate, ["--version"], { stdio: "ignore" });
+      return candidate;
+    } catch {
+      // not found, try next
+    }
+  }
+  // Try PATH
+  try {
+    const which = execFileSync("which", ["node"], { encoding: "utf8" }).trim();
+    if (which) return which;
+  } catch {
+    // not found
+  }
+  return null;
+}
+
 function startNextServer(port) {
   const isProd = app.isPackaged;
 
   if (isProd) {
-    // Standalone mode: run the self-contained server.js
-    const serverPath = path.join(process.resourcesPath, "standalone", "server.js");
-    nextServer = spawn(process.execPath, [serverPath], {
-      cwd: path.join(process.resourcesPath, "standalone"),
+    const standaloneDir = path.join(process.resourcesPath, "standalone");
+    const serverPath = path.join(standaloneDir, "server.js");
+    const nodeBin = findNodeBinary();
+
+    if (!nodeBin) {
+      console.error("[next] Could not find Node.js binary");
+      dialog.showErrorBox(
+        "Node.js Required",
+        "Slackdone requires Node.js to run. Please install it from https://nodejs.org"
+      );
+      return;
+    }
+
+    nextServer = spawn(nodeBin, [serverPath], {
+      cwd: standaloneDir,
       env: {
         ...process.env,
         PORT: String(port),
@@ -176,6 +216,8 @@ function setupAutoUpdater() {
 }
 
 app.on("ready", async () => {
+  appReady = true;
+
   // In dev, try to connect to an existing Next.js dev server first
   if (!app.isPackaged) {
     const devRunning = await isPortInUse(DEV_PORT);
@@ -188,10 +230,16 @@ app.on("ready", async () => {
 
   const port = await findOpenPort(app.isPackaged ? PROD_PORT : DEV_PORT);
   activePort = port;
-  startNextServer(port);
-  await waitForServer(port);
-  createWindow(port);
-  setupAutoUpdater();
+
+  try {
+    startNextServer(port);
+    await waitForServer(port);
+    createWindow(port);
+    setupAutoUpdater();
+  } catch (err) {
+    console.error("[app] Failed to start:", err);
+    dialog.showErrorBox("Startup Error", `Failed to start the app server: ${err.message}`);
+  }
 });
 
 app.on("window-all-closed", () => {
