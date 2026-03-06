@@ -172,3 +172,9 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+/* Hide Next.js dev indicator and DialKit panel */
+body.hide-dev-tools nextjs-portal,
+body.hide-dev-tools [class*="dialkit"] {
+  display: none !important;
+}
