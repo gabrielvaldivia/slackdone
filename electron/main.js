@@ -1,22 +1,16 @@
-const { app, BrowserWindow, shell, dialog } = require("electron");
-const { spawn } = require("child_process");
+const { app, BrowserWindow, shell } = require("electron");
 const path = require("path");
-const net = require("net");
 const { autoUpdater } = require("electron-updater");
+
+const APP_URL = "https://slackdone.vercel.app";
 
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
   app.quit();
-  // Force exit immediately — don't let macOS retry
   process.exit(0);
 }
 
 let mainWindow;
-let nextServer;
-let activePort;
-let appReady = false;
-const DEV_PORT = 3000;
-const PROD_PORT = 3033;
 
 app.on("second-instance", () => {
   if (mainWindow) {
@@ -25,90 +19,7 @@ app.on("second-instance", () => {
   }
 });
 
-function isPortInUse(port) {
-  return new Promise((resolve) => {
-    const socket = new net.Socket();
-    socket
-      .setTimeout(300)
-      .on("connect", () => {
-        socket.destroy();
-        resolve(true);
-      })
-      .on("timeout", () => {
-        socket.destroy();
-        resolve(false);
-      })
-      .on("error", () => resolve(false))
-      .connect(port, "localhost");
-  });
-}
-
-function findOpenPort(startPort) {
-  return new Promise((resolve) => {
-    const server = net.createServer();
-    server.listen(startPort, () => {
-      server.close(() => resolve(startPort));
-    });
-    server.on("error", () => resolve(findOpenPort(startPort + 1)));
-  });
-}
-
-function waitForServer(port, retries = 60) {
-  return new Promise((resolve, reject) => {
-    const check = (attempt) => {
-      const socket = new net.Socket();
-      socket
-        .setTimeout(500)
-        .on("connect", () => {
-          socket.destroy();
-          resolve();
-        })
-        .on("timeout", () => {
-          socket.destroy();
-          if (attempt < retries) setTimeout(() => check(attempt + 1), 500);
-          else reject(new Error("Server did not start"));
-        })
-        .on("error", () => {
-          if (attempt < retries) setTimeout(() => check(attempt + 1), 500);
-          else reject(new Error("Server did not start"));
-        })
-        .connect(port, "localhost");
-    };
-    check(0);
-  });
-}
-
-
-function startNextServer(port) {
-  const isProd = app.isPackaged;
-
-  if (isProd) {
-    const standaloneDir = path.join(process.resourcesPath, "standalone");
-    const serverPath = path.join(standaloneDir, "server.js");
-
-    nextServer = spawn(process.execPath, [serverPath], {
-      cwd: standaloneDir,
-      env: {
-        ...process.env,
-        ELECTRON_RUN_AS_NODE: "1",
-        PORT: String(port),
-        HOSTNAME: "localhost",
-      },
-    });
-  } else {
-    const appPath = path.join(__dirname, "..");
-    const nextBin = path.join(appPath, "node_modules", ".bin", "next");
-    nextServer = spawn(nextBin, ["dev", "-p", String(port)], {
-      cwd: appPath,
-      env: { ...process.env, PORT: String(port) },
-    });
-  }
-
-  nextServer.stdout?.on("data", (d) => console.log(`[next] ${d}`));
-  nextServer.stderr?.on("data", (d) => console.error(`[next] ${d}`));
-}
-
-function createWindow(port) {
+function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
@@ -118,7 +29,7 @@ function createWindow(port) {
     trafficLightPosition: { x: 16, y: 18 },
     webPreferences: {
       nodeIntegration: false,
-      contextIsolation: false,
+      contextIsolation: true,
       preload: path.join(__dirname, "preload.js"),
     },
   });
@@ -130,17 +41,7 @@ function createWindow(port) {
     .replace(/\s*slackdone\/\S+/i, "");
   mainWindow.webContents.setUserAgent(chromeUA);
 
-  mainWindow.loadURL(`http://localhost:${port}`);
-
-  // Rewrite any https://localhost navigation to http:// since our server is HTTP
-  const rewriteHttps = (event, url) => {
-    if (url.startsWith("https://localhost")) {
-      event.preventDefault();
-      mainWindow.loadURL(url.replace("https://", "http://"));
-    }
-  };
-  mainWindow.webContents.on("will-navigate", rewriteHttps);
-  mainWindow.webContents.on("will-redirect", rewriteHttps);
+  mainWindow.loadURL(APP_URL);
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
@@ -159,6 +60,7 @@ function setupAutoUpdater() {
   autoUpdater.autoInstallOnAppQuit = true;
 
   autoUpdater.on("update-downloaded", (info) => {
+    const { dialog } = require("electron");
     dialog
       .showMessageBox(mainWindow, {
         type: "info",
@@ -176,49 +78,20 @@ function setupAutoUpdater() {
   });
 
   autoUpdater.checkForUpdatesAndNotify();
-
-  // Check again every 30 minutes
   setInterval(() => autoUpdater.checkForUpdatesAndNotify(), 30 * 60 * 1000);
 }
 
-app.on("ready", async () => {
-  appReady = true;
-
-  // In dev, try to connect to an existing Next.js dev server first
-  if (!app.isPackaged) {
-    const devRunning = await isPortInUse(DEV_PORT);
-    if (devRunning) {
-      activePort = DEV_PORT;
-      createWindow(activePort);
-      return;
-    }
-  }
-
-  const port = await findOpenPort(app.isPackaged ? PROD_PORT : DEV_PORT);
-  activePort = port;
-
-  try {
-    startNextServer(port);
-    await waitForServer(port);
-    createWindow(port);
-    setupAutoUpdater();
-  } catch (err) {
-    console.error("[app] Failed to start:", err);
-    dialog.showErrorBox("Startup Error", `Failed to start the app server: ${err.message}`);
-  }
+app.on("ready", () => {
+  createWindow();
+  setupAutoUpdater();
 });
 
 app.on("window-all-closed", () => {
-  if (nextServer) nextServer.kill();
   app.quit();
 });
 
-app.on("before-quit", () => {
-  if (nextServer) nextServer.kill();
-});
-
 app.on("activate", () => {
-  if (mainWindow === null && activePort) {
-    createWindow(activePort);
+  if (mainWindow === null) {
+    createWindow();
   }
 });

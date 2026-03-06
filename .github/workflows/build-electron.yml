@@ -21,8 +21,6 @@ jobs:
 
       - run: npm ci
 
-      - run: npx next build
-
       - name: Build and publish
         run: npx electron-builder --mac --publish always
         env:

@@ -28,20 +28,6 @@
       "electron/**/*",
       "package.json"
     ],
-    "extraResources": [
-      {
-        "from": ".next/standalone",
-        "to": "standalone"
-      },
-      {
-        "from": ".next/static",
-        "to": "standalone/.next/static"
-      },
-      {
-        "from": "public",
-        "to": "standalone/public"
-      }
-    ],
     "npmRebuild": false
   },
   "dependencies": {
