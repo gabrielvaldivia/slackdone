@@ -1,5 +1,5 @@
 const { app, BrowserWindow, shell, dialog } = require("electron");
-const { spawn, execFileSync } = require("child_process");
+const { spawn } = require("child_process");
 const path = require("path");
 const net = require("net");
 const { autoUpdater } = require("electron-updater");
@@ -78,31 +78,6 @@ function waitForServer(port, retries = 60) {
   });
 }
 
-// Find a working node binary for running the standalone server
-function findNodeBinary() {
-  // Try common locations
-  const candidates = [
-    "/usr/local/bin/node",
-    "/opt/homebrew/bin/node",
-    "/usr/bin/node",
-  ];
-  for (const candidate of candidates) {
-    try {
-      execFileSync(candidate, ["--version"], { stdio: "ignore" });
-      return candidate;
-    } catch {
-      // not found, try next
-    }
-  }
-  // Try PATH
-  try {
-    const which = execFileSync("which", ["node"], { encoding: "utf8" }).trim();
-    if (which) return which;
-  } catch {
-    // not found
-  }
-  return null;
-}
 
 function startNextServer(port) {
   const isProd = app.isPackaged;
@@ -110,21 +85,12 @@ function startNextServer(port) {
   if (isProd) {
     const standaloneDir = path.join(process.resourcesPath, "standalone");
     const serverPath = path.join(standaloneDir, "server.js");
-    const nodeBin = findNodeBinary();
 
-    if (!nodeBin) {
-      console.error("[next] Could not find Node.js binary");
-      dialog.showErrorBox(
-        "Node.js Required",
-        "Slackdone requires Node.js to run. Please install it from https://nodejs.org"
-      );
-      return;
-    }
-
-    nextServer = spawn(nodeBin, [serverPath], {
+    nextServer = spawn(process.execPath, [serverPath], {
       cwd: standaloneDir,
       env: {
         ...process.env,
+        ELECTRON_RUN_AS_NODE: "1",
         PORT: String(port),
         HOSTNAME: "localhost",
       },
