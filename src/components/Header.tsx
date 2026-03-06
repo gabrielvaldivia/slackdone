@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import AddListModal from "./AddListModal";
 
 interface ListInfo {
@@ -42,6 +43,20 @@ export default function Header({
   user,
   onLogout,
 }: HeaderProps) {
+  const [listsOpen, setListsOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const listsRef = useRef<HTMLDivElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (listsRef.current && !listsRef.current.contains(e.target as Node)) setListsOpen(false);
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) setUserMenuOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
   const handleRemoveList = async (
     workspaceId: string,
     listId: string,
@@ -76,11 +91,11 @@ export default function Header({
       <div className="flex items-center gap-2">
         {/* Combined lists & workspaces dropdown */}
         {(workspaces.length > 0 || lists.length > 0) ? (
-          <div className="relative group">
-            <button className="rounded-md border border-border px-3 py-1 text-xs hover:bg-gray-50 transition-colors">
+          <div className="relative" ref={listsRef}>
+            <button onClick={() => setListsOpen((v) => !v)} className="rounded-md border border-border px-3 py-1 text-xs hover:bg-gray-50 transition-colors">
               Lists
             </button>
-            <div className="absolute right-0 top-full z-10 hidden group-hover:block min-w-[240px] pt-1">
+            {listsOpen && <div className="absolute right-0 top-full z-10 min-w-[240px] pt-1">
               <div className="rounded-md border border-border bg-white shadow-md">
                 {(() => {
                   // Group lists by workspace, include workspaces with no lists
@@ -154,7 +169,7 @@ export default function Header({
                   </button>
                 </div>
               </div>
-            </div>
+            </div>}
           </div>
         ) : (
           <button
@@ -167,33 +182,37 @@ export default function Header({
 
         {/* User menu */}
         {user && (
-          <div className="relative group ml-2">
-            <button className="flex items-center gap-1.5 rounded-md border border-border px-2 py-1 text-xs hover:bg-gray-50 transition-colors">
-              {user.avatar && (
-                <img
-                  src={user.avatar}
-                  alt=""
-                  className="h-4 w-4 rounded-full"
-                />
+          <div className="relative ml-2" ref={userMenuRef}>
+            <button
+              onClick={() => setUserMenuOpen((v) => !v)}
+              className="flex items-center justify-center rounded-full hover:ring-2 hover:ring-gray-200 transition-all overflow-hidden"
+            >
+              {user.avatar ? (
+                <img src={user.avatar} alt="" className="h-6 w-6 rounded-full" />
+              ) : (
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-200 text-[10px] font-medium text-gray-600">
+                  {user.name[0]}
+                </span>
               )}
-              <span className="max-w-[100px] truncate">{user.name}</span>
             </button>
-            <div className="absolute right-0 top-full z-10 hidden group-hover:block min-w-[120px] pt-1">
-              <div className="rounded-md border border-border bg-white shadow-md">
-                <a
-                  href="/docs"
-                  className="block w-full px-3 py-2 text-xs text-left hover:bg-gray-50"
-                >
-                  API Docs
-                </a>
-                <button
-                  onClick={onLogout}
-                  className="w-full px-3 py-2 text-xs text-left hover:bg-gray-50 text-red-600"
-                >
-                  Sign out
-                </button>
+            {userMenuOpen && (
+              <div className="absolute right-0 top-full z-10 min-w-[120px] pt-1">
+                <div className="rounded-md border border-border bg-white shadow-md">
+                  <a
+                    href="/docs"
+                    className="block w-full px-3 py-2 text-xs text-left hover:bg-gray-50"
+                  >
+                    API Docs
+                  </a>
+                  <button
+                    onClick={onLogout}
+                    className="w-full px-3 py-2 text-xs text-left hover:bg-gray-50 text-red-600"
+                  >
+                    Sign out
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         )}
       </div>
