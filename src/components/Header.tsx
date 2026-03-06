@@ -60,7 +60,7 @@ export default function Header({
   const [isDesktopApp, setIsDesktopApp] = useState(false);
   useEffect(() => {
     const w = window as unknown as Record<string, unknown>;
-    if (w.__ELECTRON__ === true || w.__TAURI__ != null) setIsDesktopApp(true);
+    if (w.__ELECTRON__ === true || w.__TAURI__ != null || w.__TAURI_APP__ === true) setIsDesktopApp(true);
     if (process.env.NODE_ENV === "development") document.body.classList.add("hide-dev-tools");
   }, []);
   const userMenuRef = useRef<HTMLDivElement>(null);

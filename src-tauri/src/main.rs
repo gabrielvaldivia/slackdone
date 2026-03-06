@@ -26,6 +26,7 @@ fn main() {
                 .min_inner_size(400.0, 600.0)
                 .title_bar_style(tauri::TitleBarStyle::Overlay)
                 .hidden_title(true)
+                .initialization_script("window.__TAURI_APP__ = true;")
                 .on_navigation(move |nav_url| {
                     let host = nav_url.host_str().unwrap_or("");
                     let path = nav_url.path();
@@ -54,23 +55,28 @@ fn main() {
             let handle = app.handle().clone();
             app.deep_link().on_open_url(move |event| {
                 for deep_url in event.urls() {
-                    if let Ok(parsed) = Url::parse(deep_url.as_str()) {
+                    let url_str = deep_url.as_str();
+                    if let Ok(parsed) = Url::parse(url_str) {
                         if parsed.scheme() == "slackdone" {
                             if let Some(window) = handle.get_webview_window("main") {
+                                // slackdone://auth/session parses as host=auth, path=/session
+                                let host = parsed.host_str().unwrap_or("");
                                 let path = parsed.path().trim_start_matches('/');
-                                if path == "auth/session" || path == "session" {
+                                let full = format!("{}/{}", host, path).trim_matches('/').to_string();
+
+                                if full.contains("session") {
                                     if let Some(token) = parsed.query_pairs()
                                         .find(|(k, _)| k == "token")
                                         .map(|(_, v)| v.to_string())
                                     {
                                         let js = format!(
-                                            "document.cookie = 'session={}; path=/; max-age=604800'; window.location.reload();",
+                                            "document.cookie = 'session={}; path=/; max-age=604800'; window.location.href = 'https://slackdone.vercel.app';",
                                             token.replace('\'', "\\'")
                                         );
                                         let _ = window.eval(&js);
                                     }
                                 } else {
-                                    let _ = window.eval("window.location.reload();");
+                                    let _ = window.eval("window.location.href = 'https://slackdone.vercel.app';");
                                 }
                                 let _ = window.set_focus();
                             }
