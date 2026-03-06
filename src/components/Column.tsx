@@ -211,10 +211,10 @@ export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDe
           {column.name}
           <span className="text-white/70">{column.items.length}</span>
         </span>
-        <div className="flex items-center gap-0.5">
+        <div className="flex items-center opacity-30 sm:opacity-0 transition-opacity group-hover/col:opacity-30 hover:opacity-50">
           <button
             onClick={() => setTopFormOpen(true)}
-            className="rounded p-1 text-gray-400 sm:opacity-0 transition-opacity hover:text-gray-600 group-hover/col:opacity-100"
+            className="flex h-6 w-6 items-center justify-center rounded"
             title="Add item"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -226,7 +226,7 @@ export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDe
           <div className="relative" ref={menuRef}>
             <button
               onClick={() => setMenuOpen((v) => !v)}
-              className="rounded p-1 text-gray-400 sm:opacity-0 transition-opacity hover:text-gray-600 group-hover/col:opacity-100"
+              className="flex h-6 w-6 items-center justify-center rounded"
               title="Column options"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
