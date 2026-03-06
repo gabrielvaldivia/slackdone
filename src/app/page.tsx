@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import Header from "@/components/Header";
 import EmptyState from "@/components/EmptyState";
 import Board from "@/components/Board";
-import { UnifiedBoardData } from "@/lib/types";
+import { UnifiedBoardData, BoardColumn } from "@/lib/types";
 
 import { useDialKit } from "dialkit";
 
@@ -61,8 +61,33 @@ export default function Home() {
   const boardDataRef = useRef(boardData);
   boardDataRef.current = boardData;
 
+  // Request notification permission on mount
+  useEffect(() => {
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  // Build a map of itemId → columnName from board data
+  const buildItemIndex = useCallback((columns: BoardColumn[]) => {
+    const index = new Map<string, { title: string; column: string }>();
+    for (const col of columns) {
+      for (const item of col.items) {
+        index.set(item.id, { title: item.title, column: col.name });
+      }
+    }
+    return index;
+  }, []);
+
+  const notifyChange = useCallback((title: string, body: string) => {
+    if ("Notification" in window && Notification.permission === "granted") {
+      new Notification(title, { body });
+    }
+  }, []);
+
   const fetchBoard = useCallback(async () => {
-    const isRefresh = !!boardDataRef.current;
+    const prev = boardDataRef.current;
+    const isRefresh = !!prev;
     if (isRefresh) {
       setRefreshing(true);
     } else {
@@ -73,6 +98,22 @@ export default function Home() {
       const res = await fetch("/api/unified-board");
       if (!res.ok) throw new Error("Failed to load board");
       const data = await res.json();
+
+      // Detect changes and notify (only on refresh, not initial load)
+      if (prev && data.columns) {
+        const oldIndex = buildItemIndex(prev.columns);
+        const newIndex = buildItemIndex(data.columns);
+
+        for (const [id, { title, column }] of newIndex) {
+          const old = oldIndex.get(id);
+          if (!old) {
+            notifyChange("New task", `"${title}" added to ${column}`);
+          } else if (old.column !== column) {
+            notifyChange("Task moved", `"${title}" moved from ${old.column} to ${column}`);
+          }
+        }
+      }
+
       setBoardData(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load board");
@@ -80,7 +121,7 @@ export default function Home() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [buildItemIndex, notifyChange]);
 
   // Fetch board when workspaces are loaded
   useEffect(() => {
