@@ -45,6 +45,10 @@ export default function Header({
 }: HeaderProps) {
   const [listsOpen, setListsOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [isElectron, setIsElectron] = useState(false);
+  useEffect(() => {
+    if ((window as unknown as Record<string, unknown>).__ELECTRON__ === true) setIsElectron(true);
+  }, []);
   const listsRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
@@ -76,19 +80,21 @@ export default function Header({
   };
 
   return (
-    <header className="flex items-center justify-between border-b border-border bg-white px-4 py-3">
+    <header className={`flex items-center justify-between border-b border-border bg-white px-4 py-3 ${isElectron ? "pl-20" : ""}`} style={{ WebkitAppRegion: "drag" } as React.CSSProperties}>
       <div className="flex items-center gap-4">
-        <h1 className="text-sm font-semibold tracking-tight">
-          Slackdone
-          {refreshing && (
-            <span className="ml-2 text-[10px] font-normal text-muted-foreground">
-              syncing...
-            </span>
-          )}
-        </h1>
+        {!isElectron && (
+          <h1 className="text-sm font-semibold tracking-tight">
+            Slackdone
+          </h1>
+        )}
+        {refreshing && (
+          <span className="text-[10px] font-normal text-muted-foreground">
+            syncing...
+          </span>
+        )}
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2" style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}>
         {/* Combined lists & workspaces dropdown */}
         {(workspaces.length > 0 || lists.length > 0) ? (
           <div className="relative" ref={listsRef}>
@@ -196,18 +202,44 @@ export default function Header({
               )}
             </button>
             {userMenuOpen && (
-              <div className="absolute right-0 top-full z-10 min-w-[120px] pt-1">
-                <div className="rounded-md ring-1 ring-border bg-white shadow-md">
+              <div className="absolute right-0 top-full z-10 min-w-[160px] pt-1">
+                <div className="rounded-md ring-1 ring-border bg-white shadow-md py-1">
+                  {!isElectron && (
+                    <a
+                      href="https://github.com/gabrielvaldivia/slackdone/releases/latest"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-left hover:bg-gray-50 whitespace-nowrap"
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="7 10 12 15 17 10" />
+                        <line x1="12" y1="15" x2="12" y2="3" />
+                      </svg>
+                      Download app
+                    </a>
+                  )}
                   <a
                     href="/docs"
-                    className="block w-full px-3 py-2 text-xs text-left hover:bg-gray-50"
+                    className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-left hover:bg-gray-50 whitespace-nowrap"
                   >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                      <polyline points="14 2 14 8 20 8" />
+                      <line x1="16" y1="13" x2="8" y2="13" />
+                      <line x1="16" y1="17" x2="8" y2="17" />
+                    </svg>
                     API Docs
                   </a>
                   <button
                     onClick={onLogout}
-                    className="w-full px-3 py-2 text-xs text-left hover:bg-gray-50 text-red-600"
+                    className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-left hover:bg-gray-50 text-red-600 whitespace-nowrap"
                   >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                      <polyline points="16 17 21 12 16 7" />
+                      <line x1="21" y1="12" x2="9" y2="12" />
+                    </svg>
                     Sign out
                   </button>
                 </div>
