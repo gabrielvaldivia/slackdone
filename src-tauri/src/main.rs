@@ -69,9 +69,13 @@ fn main() {
                                         .find(|(k, _)| k == "token")
                                         .map(|(_, v)| v.to_string())
                                     {
+                                        // Sanitize token: only allow base64url + dot (valid HMAC token chars)
+                                        let safe_token: String = token.chars()
+                                            .filter(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '_' || *c == '.')
+                                            .collect();
                                         let js = format!(
                                             "document.cookie = 'session={}; path=/; max-age=604800'; window.location.href = 'https://slackdone.vercel.app';",
-                                            token.replace('\'', "\\'")
+                                            safe_token
                                         );
                                         let _ = window.eval(&js);
                                     }
