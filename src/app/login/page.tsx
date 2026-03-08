@@ -80,7 +80,7 @@ function LoginContent() {
       </section>
 
       {/* App screenshot placeholder — clipped at bottom by divider */}
-      <section className="relative max-w-5xl mx-auto px-6 overflow-hidden" style={{ maxHeight: "40vw" }}>
+      <section className="relative max-w-5xl mx-auto px-6 overflow-hidden max-h-[60vw] sm:max-h-[40vw]">
         <div className="rounded-t-xl border border-b-0 border-border bg-muted aspect-[16/10] flex items-center justify-center">
           <span className="text-sm text-muted-foreground">App screenshot</span>
         </div>
@@ -91,9 +91,9 @@ function LoginContent() {
       <section className="max-w-5xl mx-auto px-6 pt-24 pb-24">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
           <FeatureCard
-            color="#14b8a6"
-            title="Kanban boards"
-            description="Visualize your Slack Lists as drag-and-drop columns. Move items between statuses effortlessly."
+            color="#3b82f6"
+            title="Multiple workspaces"
+            description="Connect all your Slack workspaces and manage lists from each one in a single view."
           />
           <FeatureCard
             color="#6366f1"
@@ -106,19 +106,19 @@ function LoginContent() {
             description="Save your favorite filter combinations and switch between them instantly."
           />
           <FeatureCard
-            color="#3b82f6"
-            title="Multiple workspaces"
-            description="Connect all your Slack workspaces and manage lists from each one in a single view."
-          />
-          <FeatureCard
             color="#ec4899"
-            title="Desktop app"
+            title="Mac app"
             description="A native macOS app with its own window, keyboard shortcuts, and deep link support."
           />
           <FeatureCard
             color="#8b5cf6"
             title="Notifications"
             description="Stay on top of changes with real-time updates when items are moved or assigned to you."
+          />
+          <FeatureCard
+            color="#14b8a6"
+            title="API"
+            description="Connect to your favorite LLM or build custom integrations with a simple REST API."
           />
         </div>
       </section>
