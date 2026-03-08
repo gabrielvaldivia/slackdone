@@ -23,14 +23,22 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${baseUrl}/login?error=no_code`);
   }
 
+  const clientId = process.env.SLACK_CLIENT_ID;
+  const clientSecret = process.env.SLACK_CLIENT_SECRET;
+  if (!clientId || !clientSecret) {
+    return NextResponse.redirect(
+      `${baseUrl}/login?error=${encodeURIComponent("Server misconfigured: missing Slack credentials")}`
+    );
+  }
+
   try {
     // Exchange code for token via openid.connect.token
     const tokenRes = await fetch(`${SLACK_API}/openid.connect.token`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
-        client_id: process.env.SLACK_CLIENT_ID!,
-        client_secret: process.env.SLACK_CLIENT_SECRET!,
+        client_id: clientId,
+        client_secret: clientSecret,
         code,
         redirect_uri: `${baseUrl}/api/auth/login/callback`,
       }),

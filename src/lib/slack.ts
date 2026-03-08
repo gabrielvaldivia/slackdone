@@ -152,13 +152,18 @@ export async function deleteListItem(
 }
 
 export async function oauthAccess(code: string) {
+  const clientId = process.env.SLACK_CLIENT_ID;
+  const clientSecret = process.env.SLACK_CLIENT_SECRET;
+  if (!clientId || !clientSecret) {
+    throw new Error("Missing SLACK_CLIENT_ID or SLACK_CLIENT_SECRET");
+  }
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
   const res = await fetch(`${SLACK_API}/oauth.v2.access`, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
-      client_id: process.env.SLACK_CLIENT_ID!,
-      client_secret: process.env.SLACK_CLIENT_SECRET!,
+      client_id: clientId,
+      client_secret: clientSecret,
       code,
       redirect_uri: `${baseUrl}/api/auth/callback`,
     }),
