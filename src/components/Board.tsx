@@ -1142,16 +1142,10 @@ export default function Board({ data, onRefresh }: BoardProps) {
               (c.type === "select" || c.type === "status") &&
               c.label.toLowerCase() === "client"
           );
-          console.log("Client debug:", {
-            clientId,
-            clientCol: clientCol ? { id: clientCol.id, key: clientCol.key, label: clientCol.label, type: (clientCol as Record<string,unknown>).type, options: clientCol.options } : null,
-            allCols: schema.map((c: { id: string; key: string; label: string; type: string }) => ({ id: c.id, key: c.key, label: c.label, type: c.type })),
-          });
           if (clientCol?.options) {
             const match = clientCol.options.find(
               (o: { label: string }) => o.label === clientId
             );
-            console.log("Client option match:", match);
             if (match) {
               initialFields.push({
                 column_id: clientCol.id,
@@ -1180,8 +1174,6 @@ export default function Board({ data, onRefresh }: BoardProps) {
         },
       ],
     });
-
-    console.log("Creating item with initial_fields:", JSON.stringify(initialFields));
 
     try {
       const res = await fetch(`/api/lists/${targetList.listId}/items`, {
