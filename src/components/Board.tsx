@@ -163,10 +163,21 @@ export default function Board({ data, onRefresh }: BoardProps) {
   const [draggingColumnId, setDraggingColumnId] = useState<string | null>(null);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const mobileSearchRef = useRef<HTMLInputElement>(null);
+  const [isDesktopApp, setIsDesktopApp] = useState(false);
+  const [desktopPortal, setDesktopPortal] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
     setColumns(applyColumnOrder(data.columns, columnOrder));
   }, [data]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const w = window as unknown as Record<string, unknown>;
+    if (w.__ELECTRON__ === true || w.__TAURI__ != null || w.__TAURI_APP__ === true) {
+      setIsDesktopApp(true);
+      const el = document.getElementById("desktop-toolbar-portal");
+      if (el) setDesktopPortal(el);
+    }
+  }, []);
 
   // Load board preferences from backend on mount
   useEffect(() => {
@@ -1232,7 +1243,9 @@ export default function Board({ data, onRefresh }: BoardProps) {
         </div>
       )}
 
-      <div className="flex flex-col gap-2 px-4 pt-3">
+      {/* Toolbar: portaled to header in desktop app, inline otherwise */}
+      {(() => {
+        const toolbarContent = (
         <FadeScroll className="flex items-center gap-2 py-0.5 -my-0.5 px-0.5 -mx-0.5">
           {/* Search (mobile) */}
           <div
@@ -1550,7 +1563,15 @@ export default function Board({ data, onRefresh }: BoardProps) {
             </form>
           )}
         </FadeScroll>
+        );
 
+        return (
+          <>
+            {isDesktopApp && desktopPortal
+              ? createPortal(toolbarContent, desktopPortal)
+              : <div className="px-4 pt-3">{toolbarContent}</div>
+            }
+            <div className={isDesktopApp && desktopPortal ? "px-4 pt-2" : "px-4"}>
         {/* Collapsible filter row: Assignee, Client, Show Hidden, Properties */}
         {filtersOpen && (
           <FadeScroll className="flex items-center gap-2">
@@ -1599,7 +1620,10 @@ export default function Board({ data, onRefresh }: BoardProps) {
             )}
           </FadeScroll>
         )}
-      </div>
+            </div>
+          </>
+        );
+      })()}
 
       <div className="flex flex-1 gap-4 overflow-x-auto p-4 snap-x snap-mandatory sm:snap-none">
         {visibleColumns.map((column) => {
