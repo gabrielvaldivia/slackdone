@@ -26,6 +26,7 @@ fn main() {
                 .min_inner_size(400.0, 600.0)
                 .title_bar_style(tauri::TitleBarStyle::Overlay)
                 .hidden_title(true)
+                .traffic_light_position(tauri::Position::Logical(tauri::LogicalPosition::new(14.0, 22.0)))
                 .initialization_script("window.__TAURI_APP__ = true;")
                 .on_navigation(move |nav_url| {
                     let host = nav_url.host_str().unwrap_or("");
