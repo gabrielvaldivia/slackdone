@@ -145,11 +145,11 @@ export default function Header({
   return (
     <header className={`relative flex items-center justify-between bg-white px-4 py-3 ${isDesktopApp ? "pl-20" : "border-b border-border"}`} style={{ WebkitAppRegion: "drag" } as React.CSSProperties}>
       {isDesktopApp && !windowFocused && (
-        <div className="absolute left-[18px] top-1/2 -translate-y-1/2 flex items-center gap-2">
-          <div className="h-3 w-3 rounded-full bg-gray-200" />
-          <div className="h-3 w-3 rounded-full bg-gray-200" />
-          <div className="h-3 w-3 rounded-full bg-gray-200" />
-        </div>
+        <>
+          <div className="absolute rounded-full bg-gray-200" style={{ width: 12, height: 12, left: 14, top: "50%", transform: "translateY(-50%)" }} />
+          <div className="absolute rounded-full bg-gray-200" style={{ width: 12, height: 12, left: 34, top: "50%", transform: "translateY(-50%)" }} />
+          <div className="absolute rounded-full bg-gray-200" style={{ width: 12, height: 12, left: 54, top: "50%", transform: "translateY(-50%)" }} />
+        </>
       )}
       <div className="flex items-center gap-4 min-w-0 flex-1">
         {!isDesktopApp && (
