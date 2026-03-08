@@ -8,6 +8,18 @@ export interface Session {
   exp: number;
 }
 
+function timingSafeEqual(a: string, b: string): boolean {
+  const enc = new TextEncoder();
+  const aBuf = enc.encode(a);
+  const bBuf = enc.encode(b);
+  if (aBuf.length !== bBuf.length) return false;
+  let mismatch = 0;
+  for (let i = 0; i < aBuf.length; i++) {
+    mismatch |= aBuf[i] ^ bBuf[i];
+  }
+  return mismatch === 0;
+}
+
 const COOKIE_NAME = "session";
 const TTL = 7 * 24 * 60 * 60; // 7 days in seconds
 
@@ -61,9 +73,16 @@ export async function verify(token: string, secret: string): Promise<object | nu
   const parts = token.split(".");
   if (parts.length !== 2) return null;
   const [data, sig] = parts;
-  // Re-sign and compare instead of using crypto.subtle.verify
   const expected = await hmacSign(data, secret);
-  if (sig !== expected) return null;
+  // Timing-safe comparison to prevent timing attacks
+  const sigBytes = fromBase64url(sig);
+  const expectedBytes = fromBase64url(expected);
+  if (sigBytes.length !== expectedBytes.length) return null;
+  let mismatch = 0;
+  for (let i = 0; i < sigBytes.length; i++) {
+    mismatch |= sigBytes[i] ^ expectedBytes[i];
+  }
+  if (mismatch !== 0) return null;
   try {
     const decoded = new TextDecoder().decode(fromBase64url(data));
     return JSON.parse(decoded);
@@ -101,7 +120,7 @@ export async function getSessionFromRequest(
   if (apiKey) {
     // Env-var fallback (backwards compat)
     const envKey = process.env.SLACKDONE_API_KEY;
-    if (envKey && apiKey === envKey) {
+    if (envKey && timingSafeEqual(apiKey, envKey)) {
       const userId = process.env.SLACKDONE_USER_ID;
       if (userId) {
         return { userId, name: "API", avatar: "", exp: Math.floor(Date.now() / 1000) + 86400 };
