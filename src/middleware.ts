@@ -9,6 +9,8 @@ const PUBLIC_PATHS = [
   "/api/auth/callback",
   "/api/health",
   "/docs",
+  "/privacy",
+  "/terms",
 ];
 
 function isPublic(pathname: string): boolean {
