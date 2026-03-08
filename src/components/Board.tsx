@@ -744,7 +744,8 @@ export default function Board({ data, onRefresh }: BoardProps) {
 
       if (!res.ok) throw new Error("Update failed");
       setError("");
-    } catch {
+    } catch (err) {
+      console.error("Move item error:", err);
       setColumns(prevColumns);
       setError("Failed to move item. Reverted.");
       setTimeout(() => setError(""), 3000);
@@ -833,7 +834,8 @@ export default function Board({ data, onRefresh }: BoardProps) {
         { method: "DELETE" }
       );
       if (!res.ok) throw new Error("Delete failed");
-    } catch {
+    } catch (err) {
+      console.error("Delete item error:", err);
       setColumns(prevColumns);
       setError("Failed to delete item. Reverted.");
       setTimeout(() => setError(""), 3000);
@@ -883,7 +885,8 @@ export default function Board({ data, onRefresh }: BoardProps) {
       );
 
       if (!res.ok) throw new Error("Rename failed");
-    } catch {
+    } catch (err) {
+      console.error("Rename item error:", err);
       onRefresh();
       setError("Failed to rename item.");
       setTimeout(() => setError(""), 3000);
@@ -947,7 +950,8 @@ export default function Board({ data, onRefresh }: BoardProps) {
       );
 
       if (!res.ok) throw new Error("Update field failed");
-    } catch {
+    } catch (err) {
+      console.error("Update field error:", err);
       onRefresh();
       setError("Failed to update field.");
       setTimeout(() => setError(""), 3000);
@@ -1041,7 +1045,8 @@ export default function Board({ data, onRefresh }: BoardProps) {
         }
       );
       if (!res.ok) throw new Error("Update assignees failed");
-    } catch {
+    } catch (err) {
+      console.error("Update assignees error:", err);
       onRefresh();
       setError("Failed to update assignees.");
       setTimeout(() => setError(""), 3000);
@@ -1194,7 +1199,8 @@ export default function Board({ data, onRefresh }: BoardProps) {
         throw new Error("Create failed");
       }
       onRefresh();
-    } catch {
+    } catch (err) {
+      console.error("Create item error:", err);
       setError("Failed to create item.");
       setTimeout(() => setError(""), 3000);
     }
