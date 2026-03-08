@@ -58,10 +58,16 @@ export default function Header({
   const helpPopoverRef = useRef<HTMLDivElement>(null);
   const [devToolsHidden, setDevToolsHidden] = useState(true);
   const [isDesktopApp, setIsDesktopApp] = useState(false);
+  const [windowFocused, setWindowFocused] = useState(true);
   useEffect(() => {
     const w = window as unknown as Record<string, unknown>;
     if (w.__ELECTRON__ === true || w.__TAURI__ != null || w.__TAURI_APP__ === true) setIsDesktopApp(true);
     if (process.env.NODE_ENV === "development") document.body.classList.add("hide-dev-tools");
+    const onFocus = () => setWindowFocused(true);
+    const onBlur = () => setWindowFocused(false);
+    window.addEventListener("focus", onFocus);
+    window.addEventListener("blur", onBlur);
+    return () => { window.removeEventListener("focus", onFocus); window.removeEventListener("blur", onBlur); };
   }, []);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
@@ -137,7 +143,14 @@ export default function Header({
   };
 
   return (
-    <header className={`flex items-center justify-between bg-white px-4 py-3 ${isDesktopApp ? "pl-20" : "border-b border-border"}`} style={{ WebkitAppRegion: "drag" } as React.CSSProperties}>
+    <header className={`relative flex items-center justify-between bg-white px-4 py-3 ${isDesktopApp ? "pl-20" : "border-b border-border"}`} style={{ WebkitAppRegion: "drag" } as React.CSSProperties}>
+      {isDesktopApp && !windowFocused && (
+        <div className="absolute left-[18px] top-1/2 -translate-y-1/2 flex items-center gap-2">
+          <div className="h-3 w-3 rounded-full bg-gray-200" />
+          <div className="h-3 w-3 rounded-full bg-gray-200" />
+          <div className="h-3 w-3 rounded-full bg-gray-200" />
+        </div>
+      )}
       <div className="flex items-center gap-4 min-w-0 flex-1">
         {!isDesktopApp && (
           <div className="flex items-center gap-1.5 shrink-0">
