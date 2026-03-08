@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import Image from "next/image";
 
 interface ListInfo {
   listId: string;
@@ -154,7 +155,7 @@ export default function Header({
       <div className="flex items-center gap-4 min-w-0 flex-1">
         {!isDesktopApp && (
           <div className="flex items-center gap-1.5 shrink-0">
-            <img src="/logo.png" alt="" className="h-5 w-5 rounded-[5px]" />
+            <Image src="/logo.png" alt="" width={20} height={20} className="rounded-[5px]" />
             <h1 className="text-sm font-semibold tracking-tight">
               Slackdone
             </h1>
