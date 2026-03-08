@@ -10,7 +10,10 @@ function LoginContent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-white">
       <div className="flex flex-col items-center gap-6">
-        <h1 className="text-xl font-semibold tracking-tight">Slackdone</h1>
+        <div className="flex items-center gap-2">
+          <img src="/logo.png" alt="" className="h-7 w-7 rounded-[7px]" />
+          <h1 className="text-xl font-semibold tracking-tight">Slackdone</h1>
+        </div>
         <p className="text-sm text-muted-foreground">
           Sign in to manage your Slack Lists.
         </p>

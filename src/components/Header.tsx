@@ -140,9 +140,12 @@ export default function Header({
     <header className={`flex items-center justify-between border-b border-border bg-white px-4 py-3 ${isDesktopApp ? "pl-20" : ""}`} style={{ WebkitAppRegion: "drag" } as React.CSSProperties}>
       <div className="flex items-center gap-4">
         {!isDesktopApp && (
-          <h1 className="text-sm font-semibold tracking-tight">
-            Slackdone
-          </h1>
+          <div className="flex items-center gap-1.5">
+            <img src="/logo.png" alt="" className="h-5 w-5 rounded-[5px]" />
+            <h1 className="text-sm font-semibold tracking-tight">
+              Slackdone
+            </h1>
+          </div>
         )}
         {refreshing && (
           <span className="text-[10px] font-normal text-muted-foreground">
