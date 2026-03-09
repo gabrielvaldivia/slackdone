@@ -198,6 +198,7 @@ async function fetchSingleBoard(
               color: c.color,
             })
           ),
+          sourceListId: listId,
         };
         schemaFields.push(field);
 
