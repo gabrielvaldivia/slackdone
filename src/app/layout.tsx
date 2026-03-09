@@ -24,7 +24,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${geistSans.variable} antialiased`}>
         {children}
-        <Toaster position="bottom-center" />
+        <Toaster position="bottom-center" toastOptions={{ style: { width: "auto" } }} />
         <Analytics />
         <DevDials />
       </body>

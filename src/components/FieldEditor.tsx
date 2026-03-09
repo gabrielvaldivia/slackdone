@@ -122,23 +122,26 @@ function NumberField({ initialValue, onUpdate }: { initialValue: string; onUpdat
 
 function LinkField({ initialValue, onUpdate }: { initialValue: string; onUpdate: (value: unknown) => void }) {
   const [value, setValue] = useState(initialValue);
-  const [editing, setEditing] = useState(false);
+  // showInput stays true while typing so the Input isn't unmounted mid-edit
+  const [showInput, setShowInput] = useState(!initialValue);
 
-  if (editing || !value) {
+  const save = () => {
+    setShowInput(!value); // keep input visible if still empty
+    if (value !== initialValue) onUpdate(value);
+  };
+
+  if (showInput) {
     return (
       <Input
         type="url"
         value={value}
         placeholder="Paste a URL…"
-        autoFocus={!!value}
+        autoFocus={!!initialValue}
         onChange={(e) => setValue(e.target.value)}
-        onBlur={() => {
-          setEditing(false);
-          if (value !== initialValue) onUpdate(value);
-        }}
+        onBlur={save}
         onKeyDown={(e) => {
-          if (e.key === "Enter") { setEditing(false); if (value !== initialValue) onUpdate(value); }
-          if (e.key === "Escape") { setValue(initialValue); setEditing(false); }
+          if (e.key === "Enter") { e.preventDefault(); save(); }
+          if (e.key === "Escape") { setValue(initialValue); setShowInput(!initialValue); }
         }}
       />
     );
@@ -155,7 +158,7 @@ function LinkField({ initialValue, onUpdate }: { initialValue: string; onUpdate:
         {value.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "")}
       </a>
       <button
-        onClick={() => setEditing(true)}
+        onClick={() => setShowInput(true)}
         className="shrink-0 opacity-0 group-hover/link:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
         title="Edit link"
       >
