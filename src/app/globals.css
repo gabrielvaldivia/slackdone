@@ -121,6 +121,15 @@ body {
   animation: slide-in-right 0.2s ease-out;
 }
 
+/* Tiptap placeholder */
+.tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--muted-foreground);
+  pointer-events: none;
+  height: 0;
+}
+
 .scrollbar-none {
   -ms-overflow-style: none;
   scrollbar-width: none;

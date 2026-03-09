@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
+import dynamic from "next/dynamic";
 import { BoardItemField, SchemaField } from "@/lib/types";
 import {
   Select,
@@ -10,7 +11,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+
+const RichTextEditor = dynamic(() => import("./RichTextEditor"), { ssr: false });
 
 interface FieldEditorProps {
   field: BoardItemField;
@@ -72,9 +74,9 @@ export default function FieldEditor({ field, schema, onUpdate }: FieldEditorProp
     return <DateField initialValue={(field.value as string) || ""} onUpdate={onUpdate} />;
   }
 
-  // Text / Rich text
+  // Text / Rich text — use tiptap editor
   if (type === "text" || type === "rich_text") {
-    return <TextAreaField initialValue={field.displayValue || ""} onUpdate={onUpdate} />;
+    return <RichTextEditor initialValue={field.displayValue || ""} onUpdate={(v) => onUpdate(v)} placeholder="Empty" />;
   }
 
   // Number
@@ -84,21 +86,6 @@ export default function FieldEditor({ field, schema, onUpdate }: FieldEditorProp
 
   // Unknown — treat as editable text
   return <StringField initialValue={field.displayValue || ""} onUpdate={onUpdate} />;
-}
-
-function TextAreaField({ initialValue, onUpdate }: { initialValue: string; onUpdate: (value: unknown) => void }) {
-  const [value, setValue] = useState(initialValue);
-
-  return (
-    <Textarea
-      value={value}
-      onChange={(e) => setValue(e.target.value)}
-      onBlur={() => { if (value !== initialValue) onUpdate(value); }}
-      rows={3}
-      placeholder="Empty"
-      className="resize-y text-sm min-h-[80px]"
-    />
-  );
 }
 
 function DateField({ initialValue, onUpdate }: { initialValue: string; onUpdate: (value: unknown) => void }) {

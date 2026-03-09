@@ -32,7 +32,7 @@ interface CardDetailModalProps {
   schema: SchemaField[];
   onClose: () => void;
   onRename: (newTitle: string) => void;
-  onUpdateField: (columnId: string, value: unknown) => void;
+  onUpdateField: (columnId: string, value: unknown, fieldType?: string) => void;
   onDelete?: () => void;
   assigneeOptions?: FilterOption[];
   onUpdateAssignees?: (userIds: string[]) => void;
@@ -365,7 +365,7 @@ export default function CardDetailModal({
             <FieldEditor
               field={entry.field}
               schema={entry.sf}
-              onUpdate={(value) => onUpdateField(entry.field.columnId, value)}
+              onUpdate={(value) => onUpdateField(entry.field.columnId, value, entry.field.type)}
             />
           </div>
         ));

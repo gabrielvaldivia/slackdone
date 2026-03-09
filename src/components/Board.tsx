@@ -882,11 +882,11 @@ export default function Board({ data, onRefresh }: BoardProps) {
     try {
       // Look up the real column ID for the name field from the item's raw data
       const nameField = targetItem.fields?.find((f) => f.key === "name");
-      const rawNameField = targetItem.rawItem?.columnValues?.find(
-        (f: { key?: string }) => f.key === "name"
-      );
+      // rawItem.columnValues is the raw Slack fields array at runtime
+      const rawFields = targetItem.rawItem?.columnValues as unknown as Array<Record<string, unknown>> | undefined;
+      const rawNameField = rawFields?.find((f) => f.key === "name");
       const nameColumnId =
-        nameField?.columnId || rawNameField?.column_id || "name";
+        nameField?.columnId || (rawNameField?.column_id as string) || "name";
 
       const cells = [
         {
@@ -929,7 +929,8 @@ export default function Board({ data, onRefresh }: BoardProps) {
   const handleUpdateField = async (
     itemId: string,
     columnId: string,
-    value: unknown
+    value: unknown,
+    fieldType?: string
   ) => {
     let targetItem: BoardItem | undefined;
     for (const col of columns) {
@@ -956,14 +957,36 @@ export default function Board({ data, onRefresh }: BoardProps) {
     );
 
     try {
-      const cell: Record<string, unknown> = { column_id: columnId };
+      // Resolve real Slack column ID from raw item data
+      const rawFields = targetItem.rawItem?.columnValues as unknown as Array<Record<string, unknown>> | undefined;
+      const rawField = rawFields?.find(
+        (f) => f.column_id === columnId || f.key === columnId
+      );
+      const realColumnId = (rawField?.column_id as string) || columnId;
+
+      const cell: Record<string, unknown> = { column_id: realColumnId };
       // Determine the field type to use the right cell key
       const fieldDef = targetItem.fields?.find((f) => f.columnId === columnId);
-      const fieldType = fieldDef?.type;
-      if (fieldType === "people" && Array.isArray(value)) {
+      const resolvedType = fieldType || fieldDef?.type || (rawField?.type as string);
+      if (resolvedType === "people" && Array.isArray(value)) {
         cell.user = value;
       } else if (Array.isArray(value)) {
         cell.select = value;
+      } else if (
+        (resolvedType === "text" || resolvedType === "rich_text") &&
+        typeof value === "string"
+      ) {
+        cell.rich_text = [
+          {
+            type: "rich_text",
+            elements: [
+              {
+                type: "rich_text_section",
+                elements: [{ type: "text", text: value }],
+              },
+            ],
+          },
+        ];
       } else if (typeof value === "string") {
         cell.value = value;
       } else if (typeof value === "number") {
@@ -1709,8 +1732,8 @@ export default function Board({ data, onRefresh }: BoardProps) {
           schema={(data.schema || []).filter((s) => !s.sourceListId || s.sourceListId === selectedItem.sourceListId)}
           onClose={() => setSelectedItem(null)}
           onRename={(newTitle) => handleRenameItem(selectedItem.id, newTitle)}
-          onUpdateField={(columnId, value) =>
-            handleUpdateField(selectedItem.id, columnId, value)
+          onUpdateField={(columnId, value, fieldType) =>
+            handleUpdateField(selectedItem.id, columnId, value, fieldType)
           }
           onDelete={() => {
             const col = columns.find((c) =>

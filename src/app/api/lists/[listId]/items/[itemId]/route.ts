@@ -72,6 +72,7 @@ export async function PATCH(
   const statusLabel = body.statusLabel as string | undefined;
 
   try {
+    console.log("PATCH cells:", JSON.stringify(normalizedCells, null, 2));
     const data = await updateListItem(
       workspace.userToken || workspace.botToken,
       listId,
