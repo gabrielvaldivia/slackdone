@@ -38,6 +38,7 @@ interface CardDetailModalProps {
   onUpdateAssignees?: (userIds: string[]) => void;
   fieldOrder?: string[];
   onFieldOrderChange?: (order: string[]) => void;
+  readOnly?: boolean;
 }
 
 function getInitials(name: string): string {
@@ -60,6 +61,7 @@ export default function CardDetailModal({
   onUpdateAssignees,
   fieldOrder = [],
   onFieldOrderChange,
+  readOnly,
 }: CardDetailModalProps) {
   const [title, setTitle] = useState(item.title);
   const [assigneePopoverOpen, setAssigneePopoverOpen] = useState(false);
@@ -141,18 +143,19 @@ export default function CardDetailModal({
       <textarea
         ref={setTitleRef}
         value={title}
-        onChange={(e) => { setTitle(e.target.value); }}
-        onBlur={handleTitleBlur}
-        onKeyDown={(e) => {
+        onChange={(e) => { if (!readOnly) setTitle(e.target.value); }}
+        onBlur={readOnly ? undefined : handleTitleBlur}
+        onKeyDown={readOnly ? undefined : (e) => {
           if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
             handleTitleBlur();
           }
         }}
         rows={1}
-        className="flex-1 resize-none bg-transparent text-lg font-semibold outline-none overflow-hidden"
+        readOnly={readOnly}
+        className={`flex-1 resize-none bg-transparent text-lg font-semibold outline-none overflow-hidden${readOnly ? " cursor-default" : ""}`}
       />
-      {onDelete && (
+      {onDelete && !readOnly && (
         <Popover open={menuOpen} onOpenChange={setMenuOpen}>
           <PopoverTrigger asChild>
             <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-muted-foreground">
@@ -195,6 +198,25 @@ export default function CardDetailModal({
         </Label>
         <div className="flex flex-wrap items-center gap-2">
           {assignees.map((user) => (
+            readOnly ? (
+            <div
+              key={user.id}
+              className="flex items-center gap-2 rounded-full bg-secondary py-1 pl-1 pr-3"
+            >
+              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-[10px] font-medium text-muted-foreground overflow-hidden">
+                {user.avatar ? (
+                  <img
+                    src={user.avatar}
+                    alt={user.displayName}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  getInitials(user.displayName)
+                )}
+              </div>
+              <span className="text-sm">{user.displayName}</span>
+            </div>
+            ) : (
             <button
               key={user.id}
               onClick={() => toggleAssignee(user.id)}
@@ -218,8 +240,9 @@ export default function CardDetailModal({
                 <line x1="6" y1="6" x2="18" y2="18" />
               </svg>
             </button>
+            )
           ))}
-          {assigneeOptions.length > 0 && (
+          {!readOnly && assigneeOptions.length > 0 && (
             <Popover open={assigneePopoverOpen} onOpenChange={setAssigneePopoverOpen}>
               <PopoverTrigger asChild>
                 <Button
@@ -352,22 +375,26 @@ export default function CardDetailModal({
         return entries.map((entry) => (
           <div
             key={entry.id}
-            draggable
-            onDragStart={() => handleDragStart(entry.id)}
-            onDragOver={(e) => handleDragOver(e, entry.id)}
-            onDrop={() => handleDrop(entry.id)}
-            onDragEnd={handleDragEnd}
+            draggable={!readOnly}
+            onDragStart={readOnly ? undefined : () => handleDragStart(entry.id)}
+            onDragOver={readOnly ? undefined : (e) => handleDragOver(e, entry.id)}
+            onDrop={readOnly ? undefined : () => handleDrop(entry.id)}
+            onDragEnd={readOnly ? undefined : handleDragEnd}
             className={`space-y-2 ${dragOverFieldId === entry.id ? "border-t-2 border-foreground" : ""}`}
           >
-            <Label className="relative text-xs uppercase tracking-wider text-muted-foreground cursor-grab group/field">
-              <span className="absolute -left-3.5 opacity-0 group-hover/field:opacity-100 transition-opacity text-muted-foreground/50">⠿</span>
+            <Label className={`relative text-xs uppercase tracking-wider text-muted-foreground${readOnly ? "" : " cursor-grab group/field"}`}>
+              {!readOnly && <span className="absolute -left-3.5 opacity-0 group-hover/field:opacity-100 transition-opacity text-muted-foreground/50">⠿</span>}
               {entry.label}
             </Label>
-            <FieldEditor
-              field={entry.field}
-              schema={entry.sf}
-              onUpdate={(value) => onUpdateField(entry.field.columnId, value, entry.field.type)}
-            />
+            {readOnly ? (
+              <p className="text-sm text-foreground">{entry.field.displayValue || <span className="text-muted-foreground">—</span>}</p>
+            ) : (
+              <FieldEditor
+                field={entry.field}
+                schema={entry.sf}
+                onUpdate={(value) => onUpdateField(entry.field.columnId, value, entry.field.type)}
+              />
+            )}
           </div>
         ));
       })()}

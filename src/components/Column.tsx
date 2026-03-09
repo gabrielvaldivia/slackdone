@@ -218,10 +218,10 @@ export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDe
           {column.name}
           <span className="text-white/70">{column.items.length}</span>
         </span>
-        {!readOnly && <div className="flex items-center opacity-30 sm:opacity-0 transition-opacity group-hover/col:opacity-30 hover:opacity-50">
+        {!readOnly && (
           <button
             onClick={() => setTopFormOpen(true)}
-            className="flex h-6 w-6 items-center justify-center rounded"
+            className="flex h-6 w-6 items-center justify-center rounded opacity-30 sm:opacity-0 transition-opacity group-hover/col:opacity-30 hover:opacity-50"
             title="Add item"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -229,8 +229,23 @@ export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDe
               <line x1="5" y1="12" x2="19" y2="12" />
             </svg>
           </button>
-        {(onHide || onMinimize) && (
-          <div>
+        )}
+        {onMinimize && (
+          <button
+            onClick={onMinimize}
+            className="flex h-6 w-6 items-center justify-center rounded opacity-0 transition-opacity group-hover/col:opacity-30 hover:!opacity-50"
+            title="Minimize"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="4 14 10 14 10 20" />
+              <polyline points="20 10 14 10 14 4" />
+              <line x1="14" y1="10" x2="21" y2="3" />
+              <line x1="3" y1="21" x2="10" y2="14" />
+            </svg>
+          </button>
+        )}
+        {!readOnly && (onHide || onMinimize) && (
+          <div className="opacity-30 sm:opacity-0 transition-opacity group-hover/col:opacity-30 hover:opacity-50">
             <button
               ref={menuBtnRef}
               onClick={() => {
@@ -285,7 +300,6 @@ export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDe
             )}
           </div>
         )}
-        </div>}
       </div>
 
       <div ref={listRef} className="flex flex-1 flex-col gap-2 overflow-y-auto px-2 pt-1 pb-2">

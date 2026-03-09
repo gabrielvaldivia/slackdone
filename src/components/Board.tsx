@@ -15,6 +15,8 @@ interface BoardProps {
   readOnly?: boolean;
   initialView?: { name: string; assignees: string[]; clients: string[]; properties?: string[] };
   shareToken?: string;
+  externalSearch?: string;
+  onExternalSearchChange?: (query: string) => void;
 }
 
 const HIDDEN_KEY = "slackdone:hiddenColumns";
@@ -232,7 +234,7 @@ function ShareDialog({ viewId, onClose }: { viewId: string; onClose: () => void 
   );
 }
 
-export default function Board({ data, onRefresh, readOnly, initialView, shareToken }: BoardProps) {
+export default function Board({ data, onRefresh, readOnly, initialView, shareToken, externalSearch, onExternalSearchChange }: BoardProps) {
   const [columnOrder, setColumnOrder] = useState<string[]>(loadColumnOrder);
   const [fieldOrder, setFieldOrder] = useState<string[]>([]);
   const fieldOrderRef = useRef<string[]>([]);
@@ -244,7 +246,9 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
   const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(loadHidden);
   const [minimizedColumns, setMinimizedColumns] = useState<Set<string>>(loadMinimized);
   const [showHidden, setShowHidden] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [internalSearch, setInternalSearch] = useState("");
+  const searchQuery = externalSearch !== undefined ? externalSearch : internalSearch;
+  const setSearchQuery = onExternalSearchChange || setInternalSearch;
   const [filterAssignees, setFilterAssignees] = useState<Set<string>>(new Set());
   const [filterClients, setFilterClients] = useState<Set<string>>(new Set());
   const [fieldFilters, setFieldFilters] = useState<Record<string, Set<string>>>({});
@@ -1435,6 +1439,7 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
         const toolbarContent = (
         <FadeScroll className="flex items-center gap-2 py-0.5 -my-0.5 px-0.5 -mx-0.5">
           {/* Search (mobile) */}
+          {externalSearch === undefined && (
           <div
             className="relative shrink-0 sm:hidden cursor-pointer"
             onClick={() => {
@@ -1475,7 +1480,9 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
               </button>
             )}
           </div>
+          )}
           {/* Desktop search */}
+          {externalSearch === undefined && (
           <div className="relative shrink-0 hidden sm:block">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400">
               <circle cx="11" cy="11" r="8" />
@@ -1500,6 +1507,7 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
               </button>
             )}
           </div>
+          )}
 
           {!readOnly && <>
           {/* Properties - icon only on mobile */}
@@ -1768,12 +1776,14 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
         </FadeScroll>
         );
 
+        const showToolbar = externalSearch === undefined || !readOnly;
+
         return (
           <>
-            {isDesktopApp && desktopPortal
+            {showToolbar && (isDesktopApp && desktopPortal
               ? createPortal(toolbarContent, desktopPortal)
               : <div className="px-4 pt-3">{toolbarContent}</div>
-            }
+            )}
             <div className={isDesktopApp && desktopPortal ? "px-4 pt-2" : "px-4"}>
         {/* Collapsible filter row: Assignee, Client, Show Hidden, Properties */}
         {filtersOpen && !readOnly && (
@@ -1885,7 +1895,7 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
         })}
       </div>
 
-      {selectedItem && !readOnly && (
+      {selectedItem && (
         <CardDetailModal
           item={selectedItem}
           schema={(data.schema || []).filter((s) => !s.sourceListId || s.sourceListId === selectedItem.sourceListId)}
@@ -1894,7 +1904,7 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
           onUpdateField={(columnId, value, fieldType) =>
             handleUpdateField(selectedItem.id, columnId, value, fieldType)
           }
-          onDelete={() => {
+          onDelete={readOnly ? undefined : () => {
             const col = columns.find((c) =>
               c.items.some((i) => i.id === selectedItem.id)
             );
@@ -1905,11 +1915,12 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
             handleUpdateAssignees(selectedItem.id, userIds)
           }
           fieldOrder={fieldOrder}
-          onFieldOrderChange={(order) => {
+          onFieldOrderChange={readOnly ? undefined : (order) => {
             setFieldOrder(order);
             fieldOrderRef.current = order;
             saveBoardPreferences(columnOrderRef.current, hiddenColumnsRef.current, minimizedColumnsRef.current, order);
           }}
+          readOnly={readOnly}
         />
       )}
     </div>
