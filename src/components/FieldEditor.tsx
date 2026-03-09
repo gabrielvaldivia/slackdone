@@ -85,7 +85,12 @@ export default function FieldEditor({ field, schema, onUpdate, disablePortal }: 
     return <RichTextEditor initialValue={field.displayValue || ""} onUpdate={(v) => onUpdate(v)} placeholder="Empty" />;
   }
 
-  // Link, unknown, and other types — plain text input
+  // Link fields — clickable when not editing
+  if (type === "link") {
+    return <LinkField initialValue={field.displayValue || ""} onUpdate={onUpdate} />;
+  }
+
+  // Unknown and other types — plain text input
   return <StringField initialValue={field.displayValue || ""} onUpdate={onUpdate} />;
 }
 
@@ -112,6 +117,53 @@ function NumberField({ initialValue, onUpdate }: { initialValue: string; onUpdat
       onChange={(e) => setValue(e.target.value)}
       onBlur={() => { if (value !== initialValue) onUpdate(value ? Number(value) : null); }}
     />
+  );
+}
+
+function LinkField({ initialValue, onUpdate }: { initialValue: string; onUpdate: (value: unknown) => void }) {
+  const [value, setValue] = useState(initialValue);
+  const [editing, setEditing] = useState(false);
+
+  if (editing || !value) {
+    return (
+      <Input
+        type="url"
+        value={value}
+        placeholder="Paste a URL…"
+        autoFocus={!!value}
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={() => {
+          setEditing(false);
+          if (value !== initialValue) onUpdate(value);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") { setEditing(false); if (value !== initialValue) onUpdate(value); }
+          if (e.key === "Escape") { setValue(initialValue); setEditing(false); }
+        }}
+      />
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1.5 group/link">
+      <a
+        href={value}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-sm text-blue-600 hover:underline truncate"
+      >
+        {value.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "")}
+      </a>
+      <button
+        onClick={() => setEditing(true)}
+        className="shrink-0 opacity-0 group-hover/link:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
+        title="Edit link"
+      >
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+        </svg>
+      </button>
+    </div>
   );
 }
 
