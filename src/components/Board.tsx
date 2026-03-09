@@ -301,9 +301,9 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Load board preferences from backend on mount (skip in readOnly mode)
+  // Load board preferences from backend on mount (skip in shared views)
   useEffect(() => {
-    if (readOnly) return;
+    if (isSharedView) return;
 
     fetch("/api/preferences")
       .then((res) => res.ok ? res.json() : null)

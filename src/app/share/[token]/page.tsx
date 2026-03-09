@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Image from "next/image";
 import Board from "@/components/Board";
@@ -22,9 +22,8 @@ export default function SharedBoardPage() {
   const [error, setError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
 
-  useEffect(() => {
+  const fetchBoard = useCallback(() => {
     if (!token) return;
-
     fetch(`/api/share/${token}`)
       .then(async (res) => {
         if (!res.ok) {
@@ -43,6 +42,10 @@ export default function SharedBoardPage() {
       })
       .finally(() => setLoading(false));
   }, [token]);
+
+  useEffect(() => {
+    fetchBoard();
+  }, [fetchBoard]);
 
   if (loading) {
     return (
@@ -80,7 +83,7 @@ export default function SharedBoardPage() {
       />
       <Board
         data={boardData}
-        onRefresh={() => {}}
+        onRefresh={fetchBoard}
         readOnly={isReadOnly}
         initialView={view || undefined}
         shareToken={isReadOnly ? undefined : token}
