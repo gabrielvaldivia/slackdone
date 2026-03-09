@@ -120,13 +120,20 @@ function LoginContent() {
           <FeatureCard
             color="#6366f1"
             title="Show only what matters"
-            description="Blazing-fast search or filter by assignee, status, or any other property."
+            description="Create custom views filtered by assignee, status, or any other property."
           />
+
           <FeatureCard
+            color="#ec4899"
+            title="Share with anyone"
+            description="Shareable links to any custom view with anyone, even if they're not on Slack."
+          />
+
+          {/* <FeatureCard
             color="#f59e0b"
             title="Saved views"
             description="Save your favorite filter combinations and switch between them instantly."
-          />
+          /> */}
 
           <FeatureCard
             color="#8b5cf6"
@@ -135,22 +142,16 @@ function LoginContent() {
           />
 
           <FeatureCard
-            color="#ec4899"
-            title="Shareable views"
-            description="Share a read-only or editable link to any saved view — like Notion or Google Docs."
-          />
-
-          <FeatureCard
             color="#14b8a6"
             title="Desktop app"
             description="A native macOS app with its own window, keyboard shortcuts, and notifications."
           />
 
-          <FeatureCard
+          {/* <FeatureCard
             color="#f97316"
             title="Live updates"
             description="Shared views auto-refresh so collaborators always see the latest changes."
-          />
+          /> */}
 
           <FeatureCard
             color="#06b6d4"
