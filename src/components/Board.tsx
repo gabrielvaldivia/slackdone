@@ -754,7 +754,7 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
     if (savingView) saveInputRef.current?.focus();
   }, [savingView]);
 
-  const visibleColumns = applyFilters.filter((c) => !hiddenColumns.has(c.id));
+  const visibleColumns = applyFilters.filter((c) => !hiddenColumns.has(c.id) && !(isSharedView && c.name.toLowerCase() === "no status" && c.items.length === 0));
   const hiddenColumnsList = applyFilters.filter((c) => hiddenColumns.has(c.id));
   const hiddenCount = hiddenColumnsList.length;
 
