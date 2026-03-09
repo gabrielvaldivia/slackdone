@@ -1098,10 +1098,25 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
       }
     }
 
-    const updateFields = (fields: typeof targetItem.fields) =>
-      fields?.map((f) =>
-        f.columnId === columnId ? { ...f, value, displayValue } : f
-      );
+    const updateFields = (fields: typeof targetItem.fields) => {
+      if (!fields) return fields;
+      const found = fields.some((f) => f.columnId === columnId);
+      if (found) {
+        return fields.map((f) =>
+          f.columnId === columnId ? { ...f, value, displayValue } : f
+        );
+      }
+      // Field doesn't exist on item yet (empty schema field) — add it
+      const sf = (data.schema || []).find((s) => s.id === columnId || s.key === columnId);
+      return [...fields, {
+        columnId,
+        key: sf?.key || columnId,
+        type: fieldType || sf?.type || "unknown",
+        label: sf?.label || columnId,
+        value,
+        displayValue,
+      }];
+    };
 
     setColumns((prev) =>
       prev.map((col) => ({
