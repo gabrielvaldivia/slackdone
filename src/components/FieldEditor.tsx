@@ -18,10 +18,10 @@ interface FieldEditorProps {
   field: BoardItemField;
   schema?: SchemaField;
   onUpdate: (value: unknown) => void;
-  portalContainer?: HTMLElement | null;
+  disablePortal?: boolean;
 }
 
-export default function FieldEditor({ field, schema, onUpdate, portalContainer }: FieldEditorProps) {
+export default function FieldEditor({ field, schema, onUpdate, disablePortal }: FieldEditorProps) {
   const type = field.type;
 
   // Select / Status
@@ -38,7 +38,7 @@ export default function FieldEditor({ field, schema, onUpdate, portalContainer }
         <SelectTrigger className="w-full">
           <SelectValue placeholder="None" />
         </SelectTrigger>
-        <SelectContent container={portalContainer}>
+        <SelectContent disablePortal={disablePortal}>
           <SelectItem value="_none_">None</SelectItem>
           {options.map((opt) => (
             <SelectItem key={opt.value} value={opt.value}>

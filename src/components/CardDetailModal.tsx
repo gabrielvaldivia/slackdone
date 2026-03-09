@@ -68,7 +68,6 @@ export default function CardDetailModal({
   const [menuOpen, setMenuOpen] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(true);
   const isDesktop = useMediaQuery("(min-width: 640px)");
-  const contentRef = useRef<HTMLDivElement>(null);
   const dragFieldRef = useRef<string | null>(null);
   const [dragOverFieldId, setDragOverFieldId] = useState<string | null>(null);
 
@@ -394,7 +393,7 @@ export default function CardDetailModal({
                 field={entry.field}
                 schema={entry.sf}
                 onUpdate={(value) => onUpdateField(entry.field.columnId, value, entry.field.type)}
-                portalContainer={contentRef.current}
+                disablePortal
               />
             )}
           </div>
@@ -411,7 +410,7 @@ export default function CardDetailModal({
           setTimeout(onClose, 300);
         }
       }}>
-        <SheetContent ref={contentRef} showCloseButton={false} className="flex flex-col overflow-hidden sm:max-w-lg p-0">
+        <SheetContent showCloseButton={false} className="flex flex-col overflow-hidden sm:max-w-lg p-0">
           <SheetHeader className="px-6 pt-6 pb-0 space-y-0">
             <SheetTitle className="sr-only">Edit task</SheetTitle>
             {titleArea}
@@ -429,7 +428,7 @@ export default function CardDetailModal({
         setTimeout(onClose, 300);
       }
     }}>
-      <DrawerContent ref={contentRef} className="flex flex-col max-h-[96vh]">
+      <DrawerContent className="flex flex-col max-h-[96vh]">
         <DrawerHeader className="px-6 pt-4 pb-0 space-y-0 text-left">
           <DrawerTitle className="sr-only">Edit task</DrawerTitle>
           {titleArea}
