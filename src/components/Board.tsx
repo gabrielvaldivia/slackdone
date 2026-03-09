@@ -1555,7 +1555,7 @@ export default function Board({ data, onRefresh, readOnly, initialView }: BoardP
                             setViewMenuPos({ top: rect.bottom + 4, left: rect.left });
                             setViewMenuOpen(viewMenuOpen === view.id ? null : view.id);
                           }}
-                          className="flex items-center justify-center -mr-1 h-4 w-4 rounded-full hover:bg-blue-200 transition-colors"
+                          className="flex items-center justify-center -mr-2 h-4 w-4 rounded-full hover:bg-blue-200 transition-colors"
                         >
                           <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor">
                             <circle cx="8" cy="3" r="1.5" />
