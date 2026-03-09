@@ -109,6 +109,7 @@ export interface BoardItem {
   sourceWorkspaceId?: string;
   sourceListId?: string;
   workspaceName?: string;
+  completedAt?: string | null;
 }
 
 // Unified board merging multiple lists across workspaces

@@ -160,6 +160,35 @@ export async function updateSavedViews(userId: string, views: SavedView[]) {
   await updateDoc(doc(db, "users", userId), { savedViews: views });
 }
 
+// Item completion timestamps
+// Stored at: users/{userId}/completions/{itemId}
+function completionsPath(userId: string) {
+  return `users/${userId}/completions`;
+}
+
+export async function setCompletedAt(userId: string, itemId: string, timestamp: string) {
+  const db = getDb();
+  await setDoc(doc(db, completionsPath(userId), itemId), { completedAt: timestamp });
+}
+
+export async function clearCompletedAt(userId: string, itemId: string) {
+  const db = getDb();
+  await deleteDoc(doc(db, completionsPath(userId), itemId));
+}
+
+export async function getCompletedAtMap(userId: string): Promise<Map<string, string>> {
+  const db = getDb();
+  const snapshot = await getDocs(collection(db, completionsPath(userId)));
+  const map = new Map<string, string>();
+  for (const d of snapshot.docs) {
+    const data = d.data();
+    if (data.completedAt) {
+      map.set(d.id, data.completedAt);
+    }
+  }
+  return map;
+}
+
 // Legacy accessors for migration
 export async function getLegacyWorkspaces(): Promise<Workspace[]> {
   const db = getDb();

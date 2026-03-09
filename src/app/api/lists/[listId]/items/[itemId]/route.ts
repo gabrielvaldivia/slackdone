@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionFromRequest } from "@/lib/session";
-import { getWorkspace } from "@/lib/store";
+import { getWorkspace, setCompletedAt, clearCompletedAt } from "@/lib/store";
 import { updateListItem, deleteListItem } from "@/lib/slack";
 
 export async function PATCH(
@@ -68,6 +68,9 @@ export async function PATCH(
     );
   }
 
+  // Check if any cell is a status/select change and extract the target label
+  const statusLabel = body.statusLabel as string | undefined;
+
   try {
     const data = await updateListItem(
       workspace.userToken || workspace.botToken,
@@ -75,6 +78,18 @@ export async function PATCH(
       itemId,
       normalizedCells
     );
+
+    // Track completedAt: if the status label (case-insensitive) is "done", record timestamp.
+    // If moving away from done, clear it.
+    if (statusLabel !== undefined) {
+      const isDone = statusLabel.toLowerCase().trim() === "done";
+      if (isDone) {
+        await setCompletedAt(session.userId, itemId, new Date().toISOString());
+      } else {
+        await clearCompletedAt(session.userId, itemId);
+      }
+    }
+
     return NextResponse.json(data);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

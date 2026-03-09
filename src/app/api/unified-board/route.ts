@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionFromRequest } from "@/lib/session";
-import { getWorkspaces, getSavedLists } from "@/lib/store";
+import { getWorkspaces, getSavedLists, getCompletedAtMap } from "@/lib/store";
 import { getListItems, getListItemInfo, getUsersInfo } from "@/lib/slack";
 import {
   BoardColumn,
@@ -117,6 +117,14 @@ export async function GET(request: NextRequest) {
           name: col.name,
           items: col.items,
         });
+      }
+    }
+
+    // Hydrate completedAt timestamps from Firestore
+    const completedAtMap = await getCompletedAtMap(session.userId);
+    for (const col of mergedColumns) {
+      for (const item of col.items) {
+        item.completedAt = completedAtMap.get(item.id) ?? null;
       }
     }
 

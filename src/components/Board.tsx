@@ -749,6 +749,7 @@ export default function Board({ data, onRefresh }: BoardProps) {
           body: JSON.stringify({
             workspaceId: draggedItem.sourceWorkspaceId,
             cells,
+            statusLabel: targetColumnId,
           }),
         }
       );
