@@ -8,6 +8,7 @@ import CardDetailModal from "./CardDetailModal";
 import FilterDropdown, { FilterOption } from "./FilterDropdown";
 import { BADGE_COLORS, getClientName } from "./Card";
 import FadeScroll from "./FadeScroll";
+import { toast } from "sonner";
 
 interface BoardProps {
   data: UnifiedBoardData;
@@ -1075,12 +1076,12 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
       );
 
       if (!res.ok) throw new Error("Rename failed");
+      toast.success("Saved");
       setTimeout(onRefresh, 1000);
     } catch (err) {
       console.error("Rename item error:", err);
+      toast.error("Failed to save");
       onRefresh();
-      setError("Failed to rename item.");
-      setTimeout(() => setError(""), 3000);
     }
   };
 
@@ -1215,13 +1216,12 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
         console.error("Update field failed:", body);
         throw new Error(body.error || "Update field failed");
       }
-      // Refresh after a short delay so Slack has time to persist the change
+      toast.success("Saved");
       setTimeout(onRefresh, 1000);
     } catch (err) {
       console.error("Update field error:", err);
+      toast.error("Failed to save");
       onRefresh();
-      setError("Failed to update field.");
-      setTimeout(() => setError(""), 3000);
     }
   };
 
@@ -1313,12 +1313,12 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
         }
       );
       if (!res.ok) throw new Error("Update assignees failed");
+      toast.success("Saved");
       setTimeout(onRefresh, 1000);
     } catch (err) {
       console.error("Update assignees error:", err);
+      toast.error("Failed to save");
       onRefresh();
-      setError("Failed to update assignees.");
-      setTimeout(() => setError(""), 3000);
     }
   };
 

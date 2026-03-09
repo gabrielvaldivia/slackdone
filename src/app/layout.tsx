@@ -3,6 +3,7 @@ import { Geist } from "next/font/google";
 import "./globals.css";
 import { DevDials } from "@/components/DevDials";
 import { Analytics } from "@vercel/analytics/react";
+import { Toaster } from "sonner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -23,6 +24,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${geistSans.variable} antialiased`}>
         {children}
+        <Toaster position="bottom-center" />
         <Analytics />
         <DevDials />
       </body>
