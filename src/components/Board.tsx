@@ -1146,6 +1146,7 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
         console.error("Update field failed:", body);
         throw new Error(body.error || "Update field failed");
       }
+      if (isSharedView) onRefresh();
     } catch (err) {
       console.error("Update field error:", err);
       onRefresh();
