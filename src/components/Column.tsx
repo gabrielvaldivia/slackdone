@@ -230,7 +230,7 @@ export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDe
             </svg>
           </button>
         )}
-        {onMinimize && (
+        {readOnly && onMinimize && (
           <button
             onClick={onMinimize}
             className="flex h-6 w-6 items-center justify-center rounded opacity-0 transition-opacity group-hover/col:opacity-30 hover:!opacity-50"
@@ -328,8 +328,8 @@ export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDe
               clientColorMap={clientColorMap}
               visibleProperties={visibleProperties}
               showClient={showClient}
-              onDelete={() => onDeleteItem(item.id, column.id)}
-              onRename={(newTitle) => onRenameItem(item.id, newTitle)}
+              onDelete={readOnly ? undefined : () => onDeleteItem(item.id, column.id)}
+              onRename={readOnly ? undefined : (newTitle) => onRenameItem(item.id, newTitle)}
               onClick={() => onCardClick?.(item)}
             />
           </div>

@@ -32,6 +32,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Allow share token auth for list API calls (token validated in route handlers)
+  if (pathname.startsWith("/api/lists/") && request.nextUrl.searchParams.get("shareToken")) {
+    return NextResponse.next();
+  }
+
   // Allow API key auth to pass through to route handlers
   if (pathname.startsWith("/api/") && request.headers.get("x-api-key")) {
     return NextResponse.next();

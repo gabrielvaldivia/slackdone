@@ -86,6 +86,7 @@ export default function SharedBoardPage() {
         shareToken={isReadOnly ? undefined : token}
         externalSearch={searchQuery}
         onExternalSearchChange={setSearchQuery}
+        isSharedView
       />
     </div>
   );

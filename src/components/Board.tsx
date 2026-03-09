@@ -17,6 +17,7 @@ interface BoardProps {
   shareToken?: string;
   externalSearch?: string;
   onExternalSearchChange?: (query: string) => void;
+  isSharedView?: boolean;
 }
 
 const HIDDEN_KEY = "slackdone:hiddenColumns";
@@ -234,7 +235,7 @@ function ShareDialog({ viewId, onClose }: { viewId: string; onClose: () => void 
   );
 }
 
-export default function Board({ data, onRefresh, readOnly, initialView, shareToken, externalSearch, onExternalSearchChange }: BoardProps) {
+export default function Board({ data, onRefresh, readOnly, initialView, shareToken, externalSearch, onExternalSearchChange, isSharedView }: BoardProps) {
   const [columnOrder, setColumnOrder] = useState<string[]>(loadColumnOrder);
   const [fieldOrder, setFieldOrder] = useState<string[]>([]);
   const fieldOrderRef = useRef<string[]>([]);
@@ -871,7 +872,7 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
       ];
 
       const res = await fetch(
-        `/api/lists/${draggedItem.sourceListId}/items/${itemId}`,
+        `/api/lists/${draggedItem.sourceListId}/items/${itemId}${shareToken ? `?shareToken=${shareToken}` : ""}`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -1028,7 +1029,7 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
       ];
 
       const res = await fetch(
-        `/api/lists/${targetItem.sourceListId}/items/${itemId}`,
+        `/api/lists/${targetItem.sourceListId}/items/${itemId}${shareToken ? `?shareToken=${shareToken}` : ""}`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -1128,7 +1129,7 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
       }
 
       const res = await fetch(
-        `/api/lists/${targetItem.sourceListId}/items/${itemId}`,
+        `/api/lists/${targetItem.sourceListId}/items/${itemId}${shareToken ? `?shareToken=${shareToken}` : ""}`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -1229,7 +1230,7 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
 
     try {
       const res = await fetch(
-        `/api/lists/${targetItem.sourceListId}/items/${itemId}`,
+        `/api/lists/${targetItem.sourceListId}/items/${itemId}${shareToken ? `?shareToken=${shareToken}` : ""}`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -1270,7 +1271,7 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
     let nameColId: string | null = null;
     try {
       const res = await fetch(
-        `/api/lists/${targetList.listId}?workspaceId=${targetList.workspaceId}`
+        `/api/lists/${targetList.listId}?workspaceId=${targetList.workspaceId}${shareToken ? `&shareToken=${shareToken}` : ""}`
       );
       if (res.ok) {
         const listData = await res.json();
@@ -1372,12 +1373,13 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
     });
 
     try {
-      const res = await fetch(`/api/lists/${targetList.listId}/items`, {
+      const res = await fetch(`/api/lists/${targetList.listId}/items${shareToken ? `?shareToken=${shareToken}` : ""}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           workspaceId: targetList.workspaceId,
           initialFields,
+          ...(shareToken ? { shareToken } : {}),
         }),
       });
 
@@ -1509,7 +1511,7 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
           </div>
           )}
 
-          {!readOnly && <>
+          {!readOnly && !isSharedView && <>
           {/* Properties - icon only on mobile */}
           <div className="shrink-0">
             <button
@@ -1786,7 +1788,7 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
             )}
             <div className={isDesktopApp && desktopPortal ? "px-4 pt-2" : "px-4"}>
         {/* Collapsible filter row: Assignee, Client, Show Hidden, Properties */}
-        {filtersOpen && !readOnly && (
+        {filtersOpen && !readOnly && !isSharedView && (
           <FadeScroll className="flex items-center gap-2">
             {assigneeOptions.length > 0 && effectiveCardProps.has("assignees") && (
               <FilterDropdown

@@ -1,20 +1,45 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionFromRequest } from "@/lib/session";
-import { getWorkspace } from "@/lib/store";
+import { getWorkspace, getShareToken } from "@/lib/store";
 import { getListItems, getListItemInfo, getUsersInfo } from "@/lib/slack";
-import { BoardColumn, BoardItem, BoardItemField, SchemaField, UserProfile } from "@/lib/types";
+import { BoardColumn, BoardItem, BoardItemField, SchemaField, UserProfile, Workspace } from "@/lib/types";
+
+async function resolveAuth(
+  request: NextRequest,
+  workspaceId: string,
+  shareToken?: string | null
+): Promise<{ userId: string; workspace: Workspace } | NextResponse> {
+  if (shareToken) {
+    const share = await getShareToken(shareToken);
+    if (!share) {
+      return NextResponse.json({ error: "Invalid share link" }, { status: 403 });
+    }
+    const workspace = await getWorkspace(share.userId, workspaceId);
+    if (!workspace) {
+      return NextResponse.json({ error: "Workspace not found" }, { status: 404 });
+    }
+    return { userId: share.userId, workspace };
+  }
+
+  const session = await getSessionFromRequest(request);
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const workspace = await getWorkspace(session.userId, workspaceId);
+  if (!workspace) {
+    return NextResponse.json({ error: "Workspace not found" }, { status: 404 });
+  }
+  return { userId: session.userId, workspace };
+}
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ listId: string }> }
 ) {
-  const session = await getSessionFromRequest(request);
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   const { listId } = await params;
   const workspaceId = request.nextUrl.searchParams.get("workspaceId");
+  const shareToken = request.nextUrl.searchParams.get("shareToken");
+
   if (!workspaceId) {
     return NextResponse.json(
       { error: "workspaceId required" },
@@ -22,13 +47,9 @@ export async function GET(
     );
   }
 
-  const workspace = await getWorkspace(session.userId, workspaceId);
-  if (!workspace) {
-    return NextResponse.json(
-      { error: "Workspace not found" },
-      { status: 404 }
-    );
-  }
+  const auth = await resolveAuth(request, workspaceId, shareToken);
+  if (auth instanceof NextResponse) return auth;
+  const { workspace } = auth;
 
   try {
     const token = workspace.userToken || workspace.botToken;

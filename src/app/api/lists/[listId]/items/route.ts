@@ -1,20 +1,44 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionFromRequest } from "@/lib/session";
-import { getWorkspace } from "@/lib/store";
+import { getWorkspace, getShareToken } from "@/lib/store";
 import { createListItem } from "@/lib/slack";
+import { Workspace } from "@/lib/types";
+
+async function resolveAuth(
+  request: NextRequest,
+  workspaceId: string,
+  shareToken?: string
+): Promise<{ userId: string; workspace: Workspace } | NextResponse> {
+  if (shareToken) {
+    const share = await getShareToken(shareToken);
+    if (!share || share.mode !== "edit") {
+      return NextResponse.json({ error: "Invalid or read-only share link" }, { status: 403 });
+    }
+    const workspace = await getWorkspace(share.userId, workspaceId);
+    if (!workspace) {
+      return NextResponse.json({ error: "Workspace not found" }, { status: 404 });
+    }
+    return { userId: share.userId, workspace };
+  }
+
+  const session = await getSessionFromRequest(request);
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const workspace = await getWorkspace(session.userId, workspaceId);
+  if (!workspace) {
+    return NextResponse.json({ error: "Workspace not found" }, { status: 404 });
+  }
+  return { userId: session.userId, workspace };
+}
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ listId: string }> }
 ) {
-  const session = await getSessionFromRequest(request);
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   const { listId } = await params;
   const body = await request.json();
-  const { workspaceId, initialFields } = body;
+  const { workspaceId, initialFields, shareToken } = body;
 
   if (!workspaceId) {
     return NextResponse.json(
@@ -23,13 +47,9 @@ export async function POST(
     );
   }
 
-  const workspace = await getWorkspace(session.userId, workspaceId);
-  if (!workspace) {
-    return NextResponse.json(
-      { error: "Workspace not found" },
-      { status: 404 }
-    );
-  }
+  const auth = await resolveAuth(request, workspaceId, shareToken);
+  if (auth instanceof NextResponse) return auth;
+  const { workspace } = auth;
 
   try {
     const data = await createListItem(
