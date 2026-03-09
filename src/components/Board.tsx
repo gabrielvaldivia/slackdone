@@ -279,7 +279,17 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
   const [desktopPortal, setDesktopPortal] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
-    setColumns(applyColumnOrder(data.columns, columnOrder));
+    const newColumns = applyColumnOrder(data.columns, columnOrder);
+    setColumns(newColumns);
+    // Keep selectedItem in sync with refreshed data
+    setSelectedItem((prev) => {
+      if (!prev) return prev;
+      for (const col of newColumns) {
+        const updated = col.items.find((i) => i.id === prev.id);
+        if (updated) return updated;
+      }
+      return prev;
+    });
   }, [data]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -1020,6 +1030,10 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
         ),
       }))
     );
+    setSelectedItem((prev) => {
+      if (!prev || prev.id !== itemId) return prev;
+      return { ...prev, title: newTitle };
+    });
 
     try {
       // Look up the real column ID for the name field from the item's raw data
@@ -1061,6 +1075,7 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
       );
 
       if (!res.ok) throw new Error("Rename failed");
+      setTimeout(onRefresh, 1000);
     } catch (err) {
       console.error("Rename item error:", err);
       onRefresh();
@@ -1200,7 +1215,8 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
         console.error("Update field failed:", body);
         throw new Error(body.error || "Update field failed");
       }
-      if (isSharedView) onRefresh();
+      // Refresh after a short delay so Slack has time to persist the change
+      setTimeout(onRefresh, 1000);
     } catch (err) {
       console.error("Update field error:", err);
       onRefresh();
@@ -1297,6 +1313,7 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
         }
       );
       if (!res.ok) throw new Error("Update assignees failed");
+      setTimeout(onRefresh, 1000);
     } catch (err) {
       console.error("Update assignees error:", err);
       onRefresh();
