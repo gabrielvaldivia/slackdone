@@ -352,22 +352,27 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
 
   // Collect all available card properties from items
   // "assignees" is a virtual property for people fields
+  // Group by label+type so the same logical property across lists is shown once
   const availableCardProps = useMemo(() => {
-    const props = new Map<string, { key: string; label: string; type: string }>();
-    props.set("assignees", { key: "assignees", label: "Assignees", type: "people" });
+    const groups = new Map<string, { keys: string[]; label: string; type: string }>();
+    groups.set("assignees", { keys: ["assignees"], label: "Assignees", type: "people" });
     for (const col of columns) {
       for (const item of col.items) {
         for (const field of item.fields || []) {
-          if (field.type === "people" || field.type === "user") continue; // covered by "assignees"
+          if (field.type === "people" || field.type === "user") continue;
           if (field.type === "unknown") continue;
           if (field.key === "todo_completed") continue;
-          if (!props.has(field.key)) {
-            props.set(field.key, { key: field.key, label: field.label, type: field.type });
+          const groupKey = `${field.label}::${field.type}`;
+          const existing = groups.get(groupKey);
+          if (existing) {
+            if (!existing.keys.includes(field.key)) existing.keys.push(field.key);
+          } else {
+            groups.set(groupKey, { keys: [field.key], label: field.label, type: field.type });
           }
         }
       }
     }
-    return [...props.values()];
+    return [...groups.values()];
   }, [columns]);
 
   // Effective visible properties: use saved or default to client + assignees
@@ -376,14 +381,16 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
     // Default: show assignees + any field labeled "client"
     const defaults = new Set<string>(["assignees"]);
     for (const prop of availableCardProps) {
-      if (prop.label.toLowerCase() === "client") defaults.add(prop.key);
+      if (prop.label.toLowerCase() === "client") {
+        for (const k of prop.keys) defaults.add(k);
+      }
     }
     return defaults;
   }, [visibleCardProps, availableCardProps]);
 
   // Whether any client-labeled property is enabled in Properties
   const showClientOnCards = useMemo(() => {
-    return availableCardProps.some((p) => p.label.toLowerCase() === "client" && effectiveCardProps.has(p.key));
+    return availableCardProps.some((p) => p.label.toLowerCase() === "client" && p.keys.some((k) => effectiveCardProps.has(k)));
   }, [availableCardProps, effectiveCardProps]);
 
   // Close props dropdown on outside click
@@ -400,10 +407,13 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
     return () => document.removeEventListener("mousedown", handler);
   }, [propsOpen]);
 
-  const toggleCardProp = (key: string) => {
+  const toggleCardProp = (keys: string[]) => {
     const current = new Set(effectiveCardProps);
-    if (current.has(key)) current.delete(key);
-    else current.add(key);
+    const anyEnabled = keys.some((k) => current.has(k));
+    for (const k of keys) {
+      if (anyEnabled) current.delete(k);
+      else current.add(k);
+    }
     const arr = [...current];
     setVisibleCardProps(arr);
     saveCardProperties(arr);
@@ -473,14 +483,14 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
     const result: { key: string; label: string; options: FilterOption[] }[] = [];
     for (const prop of availableCardProps) {
       if (prop.type !== "select" && prop.type !== "status") continue;
-      if (!effectiveCardProps.has(prop.key)) continue;
+      if (!prop.keys.some((k) => effectiveCardProps.has(k))) continue;
       // Skip client — already handled by clientOptions
       if (prop.label.toLowerCase() === "client") continue;
       const optMap = new Map<string, FilterOption>();
       for (const col of columns) {
         for (const item of col.items) {
           for (const field of item.fields || []) {
-            if (field.key !== prop.key) continue;
+            if (!prop.keys.includes(field.key)) continue;
             const display = field.displayValue?.trim();
             if (display && !/^Opt[A-Z0-9]+$/.test(display)) {
               if (!optMap.has(display)) {
@@ -492,7 +502,7 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
       }
       if (optMap.size > 0) {
         result.push({
-          key: prop.key,
+          key: prop.keys[0],
           label: prop.label,
           options: [...optMap.values()].sort((a, b) => a.name.localeCompare(b.name)),
         });
@@ -1554,13 +1564,13 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
               >
                 {availableCardProps.map((prop) => (
                   <label
-                    key={prop.key}
+                    key={prop.keys[0]}
                     className="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-sm hover:bg-gray-50"
                   >
                     <input
                       type="checkbox"
-                      checked={effectiveCardProps.has(prop.key)}
-                      onChange={() => toggleCardProp(prop.key)}
+                      checked={prop.keys.some((k) => effectiveCardProps.has(k))}
+                      onChange={() => toggleCardProp(prop.keys)}
                       className="h-3.5 w-3.5 rounded border-gray-300 text-blue-600"
                     />
                     <span className="truncate">{prop.label}</span>
@@ -1808,7 +1818,7 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
                 onChange={(v) => { setFilterAssignees(v); setActiveViewId(null); }}
               />
             )}
-            {clientOptions.length > 0 && availableCardProps.some((p) => p.label.toLowerCase() === "client" && effectiveCardProps.has(p.key)) && (
+            {clientOptions.length > 0 && availableCardProps.some((p) => p.label.toLowerCase() === "client" && p.keys.some((k) => effectiveCardProps.has(k))) && (
               <FilterDropdown
                 label="Client"
                 options={clientOptions}
