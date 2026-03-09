@@ -880,15 +880,28 @@ export default function Board({ data, onRefresh }: BoardProps) {
     );
 
     try {
+      // Look up the real column ID for the name field from the item's raw data
+      const nameField = targetItem.fields?.find((f) => f.key === "name");
+      const rawNameField = targetItem.rawItem?.columnValues?.find(
+        (f: { key?: string }) => f.key === "name"
+      );
+      const nameColumnId =
+        nameField?.columnId || rawNameField?.column_id || "name";
+
       const cells = [
         {
-          column_id: "name",
-          value: JSON.stringify([
+          column_id: nameColumnId,
+          rich_text: [
             {
-              type: "rich_text_section",
-              elements: [{ type: "text", text: newTitle }],
+              type: "rich_text",
+              elements: [
+                {
+                  type: "rich_text_section",
+                  elements: [{ type: "text", text: newTitle }],
+                },
+              ],
             },
-          ]),
+          ],
         },
       ];
 
