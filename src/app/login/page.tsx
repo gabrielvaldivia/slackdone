@@ -136,12 +136,24 @@ function LoginContent() {
 
           <FeatureCard
             color="#ec4899"
+            title="Shareable views"
+            description="Share a read-only or editable link to any saved view — like Notion or Google Docs."
+          />
+
+          <FeatureCard
+            color="#14b8a6"
             title="Desktop app"
             description="A native macOS app with its own window, keyboard shortcuts, and notifications."
           />
 
           <FeatureCard
-            color="#14b8a6"
+            color="#f97316"
+            title="Live updates"
+            description="Shared views auto-refresh so collaborators always see the latest changes."
+          />
+
+          <FeatureCard
+            color="#06b6d4"
             title="API"
             description="Connect to your favorite LLM or build custom integrations with a REST API."
           />
