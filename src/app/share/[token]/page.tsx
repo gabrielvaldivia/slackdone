@@ -13,10 +13,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   return {
     title: `${viewName} — Slackdone`,
-    description: `${viewName} on Slackdone`,
+    description: "A single kanban for all your Slack Lists",
     openGraph: {
       title: `${viewName} — Slackdone`,
-      description: `${viewName} on Slackdone`,
+      description: "A single kanban for all your Slack Lists",
       type: "website",
     },
   };
