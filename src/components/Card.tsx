@@ -12,6 +12,7 @@ interface CardProps {
   onDelete?: () => void;
   onRename?: (newTitle: string) => void;
   onClick?: () => void;
+  readOnly?: boolean;
 }
 
 function getInitials(name: string): string {
@@ -47,7 +48,7 @@ export function getClientName(item: BoardItem): string {
   return item.workspaceName || "";
 }
 
-export default function Card({ item, columnId, clientColorMap, visibleProperties, showClient, onDelete, onRename, onClick }: CardProps) {
+export default function Card({ item, columnId, clientColorMap, visibleProperties, showClient, onDelete, onRename, onClick, readOnly }: CardProps) {
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(item.title);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -95,7 +96,7 @@ export default function Card({ item, columnId, clientColorMap, visibleProperties
   return (
     <div
       data-card-id={item.id}
-      draggable={!editing}
+      draggable={!editing && !readOnly}
       onDragStart={(e) => {
         isDragging.current = true;
         const payload = JSON.stringify({

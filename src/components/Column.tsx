@@ -332,6 +332,7 @@ export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDe
               onDelete={readOnly ? undefined : () => onDeleteItem(item.id, column.id)}
               onRename={readOnly ? undefined : (newTitle) => onRenameItem(item.id, newTitle)}
               onClick={() => onCardClick?.(item)}
+              readOnly={readOnly}
             />
           </div>
         ))}
