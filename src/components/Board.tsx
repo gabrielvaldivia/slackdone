@@ -1082,22 +1082,42 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
     }
     if (!targetItem) return;
 
+    // Resolve display value for optimistic update
+    let displayValue = String(value ?? "");
+    if ((fieldType === "select" || fieldType === "status") && Array.isArray(value)) {
+      // Look up labels from schema
+      const sf = (data.schema || []).find((s) => s.id === columnId || s.key === columnId);
+      if (sf?.options) {
+        const labels = value.map((id: string) => {
+          const opt = sf.options?.find((o) => o.value === id);
+          return opt?.label || id;
+        });
+        displayValue = labels.join(", ");
+      } else {
+        displayValue = value.join(", ");
+      }
+    }
+
+    const updateFields = (fields: typeof targetItem.fields) =>
+      fields?.map((f) =>
+        f.columnId === columnId ? { ...f, value, displayValue } : f
+      );
+
     setColumns((prev) =>
       prev.map((col) => ({
         ...col,
         items: col.items.map((item) => {
           if (item.id !== itemId) return item;
-          return {
-            ...item,
-            fields: item.fields?.map((f) =>
-              f.columnId === columnId
-                ? { ...f, value, displayValue: String(value ?? "") }
-                : f
-            ),
-          };
+          return { ...item, fields: updateFields(item.fields) };
         }),
       }))
     );
+
+    // Also update selectedItem so the detail modal reflects the change
+    setSelectedItem((prev) => {
+      if (!prev || prev.id !== itemId) return prev;
+      return { ...prev, fields: updateFields(prev.fields) };
+    });
 
     try {
       // Resolve real Slack column ID from raw item data
