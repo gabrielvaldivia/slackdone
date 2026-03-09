@@ -16,15 +16,8 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 
 interface CardDetailModalProps {
@@ -71,9 +64,27 @@ export default function CardDetailModal({
   const dragFieldRef = useRef<string | null>(null);
   const [dragOverFieldId, setDragOverFieldId] = useState<string | null>(null);
 
+  const assigneeDropdownRef = useRef<HTMLDivElement>(null);
+  const menuDropdownRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     setTitle(item.title);
   }, [item.title]);
+
+  // Close dropdowns on outside click
+  useEffect(() => {
+    if (!assigneePopoverOpen && !menuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (assigneePopoverOpen && assigneeDropdownRef.current && !assigneeDropdownRef.current.contains(e.target as Node)) {
+        setAssigneePopoverOpen(false);
+      }
+      if (menuOpen && menuDropdownRef.current && !menuDropdownRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [assigneePopoverOpen, menuOpen]);
 
   const schemaMap = new Map(schema.map((s) => [s.id, s]));
   const schemaByKey = new Map(schema.map((s) => [s.key, s]));
@@ -156,35 +167,35 @@ export default function CardDetailModal({
         className={`flex-1 resize-none bg-transparent text-lg font-semibold outline-none overflow-hidden${readOnly ? " cursor-default" : ""}`}
       />
       {onDelete && !readOnly && (
-        <Popover open={menuOpen} onOpenChange={setMenuOpen}>
-          <PopoverTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-muted-foreground">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                <circle cx="12" cy="5" r="2" />
-                <circle cx="12" cy="12" r="2" />
-                <circle cx="12" cy="19" r="2" />
-              </svg>
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-40 p-1" align="end">
-            <button
-              className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-destructive hover:bg-destructive/10"
-              onClick={() => {
-                setMenuOpen(false);
-                if (window.confirm("Delete this item?")) {
-                  onDelete();
-                  onClose();
-                }
-              }}
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="3 6 5 6 21 6" />
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-              </svg>
-              Delete item
-            </button>
-          </PopoverContent>
-        </Popover>
+        <div className="relative" ref={menuDropdownRef}>
+          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-muted-foreground" onClick={() => setMenuOpen(!menuOpen)}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+              <circle cx="12" cy="5" r="2" />
+              <circle cx="12" cy="12" r="2" />
+              <circle cx="12" cy="19" r="2" />
+            </svg>
+          </Button>
+          {menuOpen && (
+            <div className="absolute right-0 top-full z-50 mt-1 w-40 rounded-md border bg-popover p-1 shadow-md">
+              <button
+                className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-destructive hover:bg-destructive/10"
+                onClick={() => {
+                  setMenuOpen(false);
+                  if (window.confirm("Delete this item?")) {
+                    onDelete();
+                    onClose();
+                  }
+                }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="3 6 5 6 21 6" />
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                </svg>
+                Delete item
+              </button>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
@@ -243,42 +254,47 @@ export default function CardDetailModal({
             )
           ))}
           {!readOnly && assigneeOptions.length > 0 && (
-            <Popover open={assigneePopoverOpen} onOpenChange={setAssigneePopoverOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-7 w-7 rounded-full border-dashed"
-                >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="12" y1="5" x2="12" y2="19" />
-                    <line x1="5" y1="12" x2="19" y2="12" />
-                  </svg>
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-52 p-1" align="start">
-                {assigneeOptions.map((opt) => (
-                  <label
-                    key={opt.id}
-                    className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
-                  >
-                    <Checkbox
-                      checked={isAssigned(opt.id)}
-                      onCheckedChange={() => toggleAssignee(opt.id)}
-                      className="h-3.5 w-3.5"
-                    />
-                    {opt.avatar ? (
-                      <img src={opt.avatar} alt="" className="h-5 w-5 rounded-full" />
-                    ) : (
-                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-muted text-[9px] font-medium text-muted-foreground">
-                        {opt.name[0]}
+            <div className="relative" ref={assigneeDropdownRef}>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-7 w-7 rounded-full border-dashed"
+                onClick={() => setAssigneePopoverOpen(!assigneePopoverOpen)}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+              </Button>
+              {assigneePopoverOpen && (
+                <div className="absolute left-0 top-full z-50 mt-1 w-52 rounded-md border bg-popover p-1 shadow-md">
+                  {assigneeOptions.map((opt) => (
+                    <div
+                      key={opt.id}
+                      role="button"
+                      onClick={() => toggleAssignee(opt.id)}
+                      className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
+                    >
+                      <span className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[4px] border text-[10px] ${isAssigned(opt.id) ? "border-primary bg-primary text-primary-foreground" : "border-input"}`}>
+                        {isAssigned(opt.id) && (
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                        )}
                       </span>
-                    )}
-                    <span className="truncate">{opt.name}</span>
-                  </label>
-                ))}
-              </PopoverContent>
-            </Popover>
+                      {opt.avatar ? (
+                        <img src={opt.avatar} alt="" className="h-5 w-5 rounded-full" />
+                      ) : (
+                        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-muted text-[9px] font-medium text-muted-foreground">
+                          {opt.name[0]}
+                        </span>
+                      )}
+                      <span className="truncate">{opt.name}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
           {assignees.length === 0 && assigneeOptions.length === 0 && (
             <span className="text-sm text-muted-foreground">No one assigned</span>

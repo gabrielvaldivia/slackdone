@@ -1285,7 +1285,12 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
     if (!targetItem) return;
 
     const peopleField = targetItem.fields?.find((f) => f.type === "people" || f.type === "user");
-    if (!peopleField) return;
+    // Fall back to schema if item doesn't have a people field yet
+    const peopleSchema = (data.schema || []).find(
+      (s) => (s.type === "people" || s.type === "user") && (!s.sourceListId || s.sourceListId === targetItem!.sourceListId)
+    );
+    const peopleColumnId = peopleField?.columnId || peopleSchema?.id;
+    if (!peopleColumnId) return;
 
     // Resolve cross-workspace user IDs to the correct workspace
     const workspaceUserIds = new Set<string>();
@@ -1332,23 +1337,29 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
     });
 
     // Optimistic update
+    const applyAssigneeUpdate = (item: BoardItem): BoardItem => ({
+      ...item,
+      assignees: updatedAssignees,
+      fields: item.fields?.map((f) =>
+        f.columnId === peopleColumnId
+          ? { ...f, value: resolvedIds, displayValue: updatedAssignees.map((a) => a.displayName).join(", ") }
+          : f
+      ),
+    });
+
     setColumns((prev) =>
       prev.map((col) => ({
         ...col,
-        items: col.items.map((item) => {
-          if (item.id !== itemId) return item;
-          return {
-            ...item,
-            assignees: updatedAssignees,
-            fields: item.fields?.map((f) =>
-              f.columnId === peopleField.columnId
-                ? { ...f, value: resolvedIds, displayValue: updatedAssignees.map((a) => a.displayName).join(", ") }
-                : f
-            ),
-          };
-        }),
+        items: col.items.map((item) =>
+          item.id === itemId ? applyAssigneeUpdate(item) : item
+        ),
       }))
     );
+
+    setSelectedItem((prev) => {
+      if (!prev || prev.id !== itemId) return prev;
+      return applyAssigneeUpdate(prev);
+    });
 
     try {
       const res = await fetch(
@@ -1358,7 +1369,7 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             workspaceId: targetItem.sourceWorkspaceId,
-            cells: [{ column_id: peopleField.columnId, user: resolvedIds }],
+            cells: [{ column_id: peopleColumnId, user: resolvedIds }],
             ...(shareToken ? { shareToken } : {}),
           }),
         }

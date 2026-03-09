@@ -21,10 +21,14 @@ function PopoverContent({
   className,
   align = "center",
   sideOffset = 4,
+  disablePortal,
   ...props
-}: React.ComponentProps<typeof PopoverPrimitive.Content>) {
+}: React.ComponentProps<typeof PopoverPrimitive.Content> & {
+  disablePortal?: boolean
+}) {
+  const Wrapper = disablePortal ? React.Fragment : PopoverPrimitive.Portal;
   return (
-    <PopoverPrimitive.Portal>
+    <Wrapper>
       <PopoverPrimitive.Content
         data-slot="popover-content"
         align={align}
@@ -35,7 +39,7 @@ function PopoverContent({
         )}
         {...props}
       />
-    </PopoverPrimitive.Portal>
+    </Wrapper>
   )
 }
 
