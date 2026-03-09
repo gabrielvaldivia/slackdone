@@ -42,9 +42,10 @@ interface ColumnProps {
   onColumnDragEnd?: () => void;
   onColumnDrop?: () => void;
   isColumnDragging?: boolean;
+  readOnly?: boolean;
 }
 
-export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDeleteItem, onRenameItem, onCardClick, onHide, onMinimize, onExpand, minimized, onUnhide, clientColorMap, assigneeOptions, clientOptions, defaultAssignees, defaultClient, visibleProperties, showClient, onColumnDragStart, onColumnDragEnd, onColumnDrop, isColumnDragging }: ColumnProps) {
+export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDeleteItem, onRenameItem, onCardClick, onHide, onMinimize, onExpand, minimized, onUnhide, clientColorMap, assigneeOptions, clientOptions, defaultAssignees, defaultClient, visibleProperties, showClient, onColumnDragStart, onColumnDragEnd, onColumnDrop, isColumnDragging, readOnly }: ColumnProps) {
   const [dragOver, setDragOver] = useState(false);
   const [columnDragOver, setColumnDragOver] = useState(false);
   const [dropIndex, setDropIndex] = useState<number | null>(null);
@@ -217,7 +218,7 @@ export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDe
           {column.name}
           <span className="text-white/70">{column.items.length}</span>
         </span>
-        <div className="flex items-center opacity-30 sm:opacity-0 transition-opacity group-hover/col:opacity-30 hover:opacity-50">
+        {!readOnly && <div className="flex items-center opacity-30 sm:opacity-0 transition-opacity group-hover/col:opacity-30 hover:opacity-50">
           <button
             onClick={() => setTopFormOpen(true)}
             className="flex h-6 w-6 items-center justify-center rounded"
@@ -284,11 +285,11 @@ export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDe
             )}
           </div>
         )}
-        </div>
+        </div>}
       </div>
 
       <div ref={listRef} className="flex flex-1 flex-col gap-2 overflow-y-auto px-2 pt-1 pb-2">
-        {topFormOpen && (
+        {!readOnly && topFormOpen && (
           <AddCardForm
             onAdd={(title, assigneeIds, clientId) => {
               onAddItem(column.id, title, assigneeIds, clientId);
@@ -322,13 +323,15 @@ export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDe
         {dropIndex === column.items.length && dragOver && (
           <div className="h-0.5 rounded-full bg-blue-400 mx-1" />
         )}
-        <AddCardForm
-          onAdd={(title, assigneeIds, clientId) => onAddItem(column.id, title, assigneeIds, clientId)}
-          assigneeOptions={assigneeOptions}
-          clientOptions={clientOptions}
-          defaultAssignees={defaultAssignees}
-          defaultClient={defaultClient}
-        />
+        {!readOnly && (
+          <AddCardForm
+            onAdd={(title, assigneeIds, clientId) => onAddItem(column.id, title, assigneeIds, clientId)}
+            assigneeOptions={assigneeOptions}
+            clientOptions={clientOptions}
+            defaultAssignees={defaultAssignees}
+            defaultClient={defaultClient}
+          />
+        )}
       </div>
     </div>
   );

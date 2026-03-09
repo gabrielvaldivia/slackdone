@@ -190,6 +190,30 @@ export async function getCompletedAtMap(userId: string): Promise<Map<string, str
   return map;
 }
 
+// Share tokens (public read-only links)
+export interface ShareToken {
+  userId: string;
+  viewId: string;
+  viewSnapshot: SavedView;
+  createdAt: number;
+}
+
+export async function createShareToken(token: string, data: ShareToken) {
+  const db = getDb();
+  await setDoc(doc(db, "shareTokens", token), data);
+}
+
+export async function getShareToken(token: string): Promise<ShareToken | null> {
+  const db = getDb();
+  const snap = await getDoc(doc(db, "shareTokens", token));
+  return snap.exists() ? (snap.data() as ShareToken) : null;
+}
+
+export async function deleteShareToken(token: string) {
+  const db = getDb();
+  await deleteDoc(doc(db, "shareTokens", token));
+}
+
 // Legacy accessors for migration
 export async function getLegacyWorkspaces(): Promise<Workspace[]> {
   const db = getDb();

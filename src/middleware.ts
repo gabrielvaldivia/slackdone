@@ -11,6 +11,7 @@ const PUBLIC_PATHS = [
   "/docs",
   "/privacy",
   "/terms",
+  "/share",
 ];
 
 function isPublic(pathname: string): boolean {
@@ -23,6 +24,11 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (isPublic(pathname)) {
+    return NextResponse.next();
+  }
+
+  // Allow public access to shared board API (GET /api/share/[token])
+  if (pathname.match(/^\/api\/share\/[^/]+$/)) {
     return NextResponse.next();
   }
 

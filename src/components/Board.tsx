@@ -12,6 +12,8 @@ import FadeScroll from "./FadeScroll";
 interface BoardProps {
   data: UnifiedBoardData;
   onRefresh: () => void;
+  readOnly?: boolean;
+  initialView?: { name: string; assignees: string[]; clients: string[]; properties?: string[] };
 }
 
 const HIDDEN_KEY = "slackdone:hiddenColumns";
@@ -129,7 +131,7 @@ function applyColumnOrder(columns: BoardColumnType[], savedOrder: string[]): Boa
   return ordered;
 }
 
-export default function Board({ data, onRefresh }: BoardProps) {
+export default function Board({ data, onRefresh, readOnly, initialView }: BoardProps) {
   const [columnOrder, setColumnOrder] = useState<string[]>(loadColumnOrder);
   const [fieldOrder, setFieldOrder] = useState<string[]>([]);
   const fieldOrderRef = useRef<string[]>([]);
@@ -183,8 +185,20 @@ export default function Board({ data, onRefresh }: BoardProps) {
     }
   }, []);
 
-  // Load board preferences from backend on mount
+  // Apply initial view filters for shared/read-only boards
   useEffect(() => {
+    if (!initialView) return;
+    setFilterAssignees(new Set(initialView.assignees || []));
+    setFilterClients(new Set(initialView.clients || []));
+    if (initialView.properties) {
+      setVisibleCardProps(initialView.properties);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Load board preferences from backend on mount (skip in readOnly mode)
+  useEffect(() => {
+    if (readOnly) return;
+
     fetch("/api/preferences")
       .then((res) => res.ok ? res.json() : null)
       .then((prefs) => {
@@ -611,6 +625,27 @@ export default function Board({ data, onRefresh }: BoardProps) {
     saveViews(next);
     setDraggingViewId(null);
     setViewDropTarget(null);
+  };
+
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const handleShareView = async (viewId: string) => {
+    try {
+      const res = await fetch("/api/share", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ viewId }),
+      });
+      if (!res.ok) throw new Error("Failed to create share link");
+      const { url } = await res.json();
+      const fullUrl = `${window.location.origin}${url}`;
+      await navigator.clipboard.writeText(fullUrl);
+      setShareUrl(fullUrl);
+      setTimeout(() => setShareUrl(null), 3000);
+    } catch (err) {
+      console.error("Share error:", err);
+      setError("Failed to create share link.");
+      setTimeout(() => setError(""), 3000);
+    }
   };
 
   // Close view context menu on outside click
@@ -1302,6 +1337,11 @@ export default function Board({ data, onRefresh }: BoardProps) {
           {error}
         </div>
       )}
+      {shareUrl && (
+        <div className="border-b border-border px-4 py-2 text-xs text-green-700 bg-green-50">
+          Share link copied to clipboard
+        </div>
+      )}
 
       {/* Toolbar: portaled to header in desktop app, inline otherwise */}
       {(() => {
@@ -1374,6 +1414,7 @@ export default function Board({ data, onRefresh }: BoardProps) {
             )}
           </div>
 
+          {!readOnly && <>
           {/* Properties - icon only on mobile */}
           <div className="shrink-0">
             <button
@@ -1547,6 +1588,20 @@ export default function Board({ data, onRefresh }: BoardProps) {
                         Rename
                       </button>
                       <button
+                        onClick={() => {
+                          setViewMenuOpen(null);
+                          handleShareView(view.id);
+                        }}
+                        className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-gray-700 hover:bg-gray-100"
+                      >
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+                          <polyline points="16 6 12 2 8 6" />
+                          <line x1="12" y1="2" x2="12" y2="15" />
+                        </svg>
+                        Share link
+                      </button>
+                      <button
                         onClick={() => handleDeleteView(view.id)}
                         className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-red-600 hover:bg-red-50"
                       >
@@ -1622,6 +1677,7 @@ export default function Board({ data, onRefresh }: BoardProps) {
               </button>
             </form>
           )}
+          </>}
         </FadeScroll>
         );
 
@@ -1633,7 +1689,7 @@ export default function Board({ data, onRefresh }: BoardProps) {
             }
             <div className={isDesktopApp && desktopPortal ? "px-4 pt-2" : "px-4"}>
         {/* Collapsible filter row: Assignee, Client, Show Hidden, Properties */}
-        {filtersOpen && (
+        {filtersOpen && !readOnly && (
           <FadeScroll className="flex items-center gap-2">
             {assigneeOptions.length > 0 && effectiveCardProps.has("assignees") && (
               <FilterDropdown
@@ -1699,9 +1755,9 @@ export default function Board({ data, onRefresh }: BoardProps) {
               onDeleteItem={handleDeleteItem}
               onRenameItem={handleRenameItem}
               onCardClick={setSelectedItem}
-              onHide={() => hideColumn(column.id)}
-              onMinimize={() => minimizeColumn(column.id)}
-              onExpand={() => expandColumn(column.id)}
+              onHide={readOnly ? undefined : () => hideColumn(column.id)}
+              onMinimize={readOnly ? undefined : () => minimizeColumn(column.id)}
+              onExpand={readOnly ? undefined : () => expandColumn(column.id)}
               minimized={isMinimized}
               clientColorMap={clientColorMap}
               assigneeOptions={assigneeOptions}
@@ -1710,10 +1766,11 @@ export default function Board({ data, onRefresh }: BoardProps) {
               defaultClient={filterClients.size === 1 ? [...filterClients][0] : null}
               visibleProperties={effectiveCardProps}
               showClient={showClientOnCards}
-              onColumnDragStart={() => handleColumnDragStart(column.id)}
-              onColumnDragEnd={handleColumnDragEnd}
-              onColumnDrop={() => handleColumnDrop(column.id)}
+              onColumnDragStart={readOnly ? undefined : () => handleColumnDragStart(column.id)}
+              onColumnDragEnd={readOnly ? undefined : handleColumnDragEnd}
+              onColumnDrop={readOnly ? undefined : () => handleColumnDrop(column.id)}
               isColumnDragging={draggingColumnId === column.id}
+              readOnly={readOnly}
             />
           );
         })}
@@ -1741,7 +1798,7 @@ export default function Board({ data, onRefresh }: BoardProps) {
         })}
       </div>
 
-      {selectedItem && (
+      {selectedItem && !readOnly && (
         <CardDetailModal
           item={selectedItem}
           schema={(data.schema || []).filter((s) => !s.sourceListId || s.sourceListId === selectedItem.sourceListId)}
