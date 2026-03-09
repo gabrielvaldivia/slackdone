@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionFromRequest } from "@/lib/session";
-import { getSavedViews, createShareToken } from "@/lib/store";
+import { getSavedViews, getBoardPreferences, createShareToken } from "@/lib/store";
 
 export async function POST(request: NextRequest) {
   const session = await getSessionFromRequest(request);
@@ -20,11 +20,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "View not found" }, { status: 404 });
     }
 
+    const prefs = await getBoardPreferences(session.userId);
+
     const token = crypto.randomUUID();
     await createShareToken(token, {
       userId: session.userId,
       viewId,
-      viewSnapshot: view,
+      viewSnapshot: {
+        ...view,
+        columnOrder: prefs?.columnOrder,
+        minimizedColumns: prefs?.minimizedColumns,
+      },
       mode: mode === "edit" ? "edit" : "readonly",
       createdAt: Date.now(),
     });

@@ -147,6 +147,8 @@ export interface SavedView {
   assignees: string[];
   clients: string[];
   properties?: string[];
+  columnOrder?: string[];
+  minimizedColumns?: string[];
 }
 
 export async function getSavedViews(userId: string): Promise<SavedView[]> {

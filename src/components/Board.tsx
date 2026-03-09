@@ -13,7 +13,7 @@ interface BoardProps {
   data: UnifiedBoardData;
   onRefresh: () => void;
   readOnly?: boolean;
-  initialView?: { name: string; assignees: string[]; clients: string[]; properties?: string[] };
+  initialView?: { name: string; assignees: string[]; clients: string[]; properties?: string[]; columnOrder?: string[]; minimizedColumns?: string[] };
   shareToken?: string;
   externalSearch?: string;
   onExternalSearchChange?: (query: string) => void;
@@ -298,6 +298,15 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
     setFilterClients(new Set(initialView.clients || []));
     if (initialView.properties) {
       setVisibleCardProps(initialView.properties);
+    }
+    if (initialView.columnOrder?.length) {
+      setColumnOrder(initialView.columnOrder);
+      columnOrderRef.current = initialView.columnOrder;
+      setColumns((prev) => applyColumnOrder(prev, initialView.columnOrder!));
+    }
+    if (initialView.minimizedColumns?.length) {
+      setMinimizedColumns(new Set(initialView.minimizedColumns));
+      minimizedColumnsRef.current = new Set(initialView.minimizedColumns);
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
