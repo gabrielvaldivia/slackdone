@@ -195,6 +195,7 @@ export interface ShareToken {
   userId: string;
   viewId: string;
   viewSnapshot: SavedView;
+  mode: "readonly" | "edit";
   createdAt: number;
 }
 

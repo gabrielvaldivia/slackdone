@@ -14,6 +14,7 @@ interface BoardProps {
   onRefresh: () => void;
   readOnly?: boolean;
   initialView?: { name: string; assignees: string[]; clients: string[]; properties?: string[] };
+  shareToken?: string;
 }
 
 const HIDDEN_KEY = "slackdone:hiddenColumns";
@@ -52,10 +53,11 @@ function loadColumnOrder(): string[] {
 }
 
 // Save to both localStorage (fast) and backend (persistent)
-function saveBoardPreferences(columnOrder: string[], hiddenColumns: Set<string>, minimizedColumns: Set<string>, fieldOrder?: string[]) {
+function saveBoardPreferences(columnOrder: string[], hiddenColumns: Set<string>, minimizedColumns: Set<string>, fieldOrder?: string[], localOnly?: boolean) {
   localStorage.setItem(ORDER_KEY, JSON.stringify(columnOrder));
   localStorage.setItem(HIDDEN_KEY, JSON.stringify([...hiddenColumns]));
   localStorage.setItem(MINIMIZED_KEY, JSON.stringify([...minimizedColumns]));
+  if (localOnly) return;
   const payload: Record<string, unknown> = {
     columnOrder,
     hiddenColumns: [...hiddenColumns],
@@ -131,7 +133,106 @@ function applyColumnOrder(columns: BoardColumnType[], savedOrder: string[]): Boa
   return ordered;
 }
 
-export default function Board({ data, onRefresh, readOnly, initialView }: BoardProps) {
+function ShareDialog({ viewId, onClose }: { viewId: string; onClose: () => void }) {
+  const [mode, setMode] = useState<"readonly" | "edit">("readonly");
+  const [url, setUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [error, setError] = useState("");
+
+  const generateLink = useCallback(async (m: "readonly" | "edit") => {
+    setLoading(true);
+    setError("");
+    setUrl(null);
+    setCopied(false);
+    try {
+      const res = await fetch("/api/share", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ viewId, mode: m }),
+      });
+      if (!res.ok) throw new Error("Failed to create share link");
+      const data = await res.json();
+      setUrl(`${window.location.origin}${data.url}`);
+    } catch {
+      setError("Failed to generate link");
+    } finally {
+      setLoading(false);
+    }
+  }, [viewId]);
+
+  useEffect(() => {
+    generateLink(mode);
+  }, [mode, generateLink]);
+
+  const handleCopy = async () => {
+    if (!url) return;
+    await navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md rounded-lg bg-white p-5 shadow-lg"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-semibold">Share view</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="space-y-3">
+          <div className="flex items-center">
+            <span className="text-sm text-muted-foreground">Anyone with the link can</span>
+            <select
+              value={mode}
+              onChange={(e) => setMode(e.target.value as "readonly" | "edit")}
+              className="ml-1 text-sm font-medium outline-none bg-transparent cursor-pointer appearance-none"
+              style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`, backgroundRepeat: "no-repeat", backgroundPosition: "right center", paddingRight: "16px" }}
+            >
+              <option value="readonly">view</option>
+              <option value="edit">edit</option>
+            </select>
+          </div>
+
+          <div className="flex gap-2">
+            <input
+              type="text"
+              readOnly
+              value={loading ? "Generating..." : url || ""}
+              className="flex-1 rounded-md border border-border px-3 py-2 text-sm bg-gray-50 outline-none text-muted-foreground select-all"
+              onFocus={(e) => e.target.select()}
+            />
+            <button
+              onClick={handleCopy}
+              disabled={!url || loading}
+              className="shrink-0 rounded-md bg-foreground px-4 py-2 text-xs text-background hover:bg-foreground/90 transition-colors disabled:opacity-50"
+            >
+              {copied ? "Copied!" : "Copy"}
+            </button>
+          </div>
+
+          {error && <p className="text-xs text-red-600">{error}</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function Board({ data, onRefresh, readOnly, initialView, shareToken }: BoardProps) {
   const [columnOrder, setColumnOrder] = useState<string[]>(loadColumnOrder);
   const [fieldOrder, setFieldOrder] = useState<string[]>([]);
   const fieldOrderRef = useRef<string[]>([]);
@@ -461,7 +562,7 @@ export default function Board({ data, onRefresh, readOnly, initialView }: BoardP
       const next = new Set(prev);
       next.add(id);
       hiddenColumnsRef.current = next;
-      saveBoardPreferences(columnOrderRef.current, next, minimizedColumnsRef.current);
+      saveBoardPreferences(columnOrderRef.current, next, minimizedColumnsRef.current, undefined, readOnly);
       return next;
     });
   };
@@ -471,7 +572,7 @@ export default function Board({ data, onRefresh, readOnly, initialView }: BoardP
       const next = new Set(prev);
       next.delete(id);
       hiddenColumnsRef.current = next;
-      saveBoardPreferences(columnOrderRef.current, next, minimizedColumnsRef.current);
+      saveBoardPreferences(columnOrderRef.current, next, minimizedColumnsRef.current, undefined, readOnly);
       return next;
     });
   };
@@ -481,7 +582,7 @@ export default function Board({ data, onRefresh, readOnly, initialView }: BoardP
       const next = new Set(prev);
       next.add(id);
       minimizedColumnsRef.current = next;
-      saveBoardPreferences(columnOrderRef.current, hiddenColumnsRef.current, next);
+      saveBoardPreferences(columnOrderRef.current, hiddenColumnsRef.current, next, undefined, readOnly);
       return next;
     });
   };
@@ -491,7 +592,7 @@ export default function Board({ data, onRefresh, readOnly, initialView }: BoardP
       const next = new Set(prev);
       next.delete(id);
       minimizedColumnsRef.current = next;
-      saveBoardPreferences(columnOrderRef.current, hiddenColumnsRef.current, next);
+      saveBoardPreferences(columnOrderRef.current, hiddenColumnsRef.current, next, undefined, readOnly);
       return next;
     });
   };
@@ -627,26 +728,7 @@ export default function Board({ data, onRefresh, readOnly, initialView }: BoardP
     setViewDropTarget(null);
   };
 
-  const [shareUrl, setShareUrl] = useState<string | null>(null);
-  const handleShareView = async (viewId: string) => {
-    try {
-      const res = await fetch("/api/share", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ viewId }),
-      });
-      if (!res.ok) throw new Error("Failed to create share link");
-      const { url } = await res.json();
-      const fullUrl = `${window.location.origin}${url}`;
-      await navigator.clipboard.writeText(fullUrl);
-      setShareUrl(fullUrl);
-      setTimeout(() => setShareUrl(null), 3000);
-    } catch (err) {
-      console.error("Share error:", err);
-      setError("Failed to create share link.");
-      setTimeout(() => setError(""), 3000);
-    }
-  };
+  const [shareDialogViewId, setShareDialogViewId] = useState<string | null>(null);
 
   // Close view context menu on outside click
   useEffect(() => {
@@ -793,6 +875,7 @@ export default function Board({ data, onRefresh, readOnly, initialView }: BoardP
             workspaceId: draggedItem.sourceWorkspaceId,
             cells,
             statusLabel: targetColumnId,
+            ...(shareToken ? { shareToken } : {}),
           }),
         }
       );
@@ -885,7 +968,7 @@ export default function Board({ data, onRefresh, readOnly, initialView }: BoardP
 
     try {
       const res = await fetch(
-        `/api/lists/${targetItem.sourceListId}/items/${itemId}?workspaceId=${targetItem.sourceWorkspaceId}`,
+        `/api/lists/${targetItem.sourceListId}/items/${itemId}?workspaceId=${targetItem.sourceWorkspaceId}${shareToken ? `&shareToken=${shareToken}` : ""}`,
         { method: "DELETE" }
       );
       if (!res.ok) throw new Error("Delete failed");
@@ -948,6 +1031,7 @@ export default function Board({ data, onRefresh, readOnly, initialView }: BoardP
           body: JSON.stringify({
             workspaceId: targetItem.sourceWorkspaceId,
             cells,
+            ...(shareToken ? { shareToken } : {}),
           }),
         }
       );
@@ -1047,6 +1131,7 @@ export default function Board({ data, onRefresh, readOnly, initialView }: BoardP
           body: JSON.stringify({
             workspaceId: targetItem.sourceWorkspaceId,
             cells: [cell],
+            ...(shareToken ? { shareToken } : {}),
           }),
         }
       );
@@ -1147,6 +1232,7 @@ export default function Board({ data, onRefresh, readOnly, initialView }: BoardP
           body: JSON.stringify({
             workspaceId: targetItem.sourceWorkspaceId,
             cells: [{ column_id: peopleField.columnId, user: resolvedIds }],
+            ...(shareToken ? { shareToken } : {}),
           }),
         }
       );
@@ -1324,7 +1410,7 @@ export default function Board({ data, onRefresh, readOnly, initialView }: BoardP
       const newOrder = next.map((c) => c.id);
       setColumnOrder(newOrder);
       columnOrderRef.current = newOrder;
-      saveBoardPreferences(newOrder, hiddenColumnsRef.current, minimizedColumnsRef.current);
+      saveBoardPreferences(newOrder, hiddenColumnsRef.current, minimizedColumnsRef.current, undefined, readOnly);
       return next;
     });
     setDraggingColumnId(null);
@@ -1337,10 +1423,11 @@ export default function Board({ data, onRefresh, readOnly, initialView }: BoardP
           {error}
         </div>
       )}
-      {shareUrl && (
-        <div className="border-b border-border px-4 py-2 text-xs text-green-700 bg-green-50">
-          Share link copied to clipboard
-        </div>
+      {shareDialogViewId && (
+        <ShareDialog
+          viewId={shareDialogViewId}
+          onClose={() => setShareDialogViewId(null)}
+        />
       )}
 
       {/* Toolbar: portaled to header in desktop app, inline otherwise */}
@@ -1590,7 +1677,7 @@ export default function Board({ data, onRefresh, readOnly, initialView }: BoardP
                       <button
                         onClick={() => {
                           setViewMenuOpen(null);
-                          handleShareView(view.id);
+                          setShareDialogViewId(view.id);
                         }}
                         className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-gray-700 hover:bg-gray-100"
                       >
@@ -1599,7 +1686,7 @@ export default function Board({ data, onRefresh, readOnly, initialView }: BoardP
                           <polyline points="16 6 12 2 8 6" />
                           <line x1="12" y1="2" x2="12" y2="15" />
                         </svg>
-                        Share link
+                        Share
                       </button>
                       <button
                         onClick={() => handleDeleteView(view.id)}
@@ -1756,8 +1843,8 @@ export default function Board({ data, onRefresh, readOnly, initialView }: BoardP
               onRenameItem={handleRenameItem}
               onCardClick={setSelectedItem}
               onHide={readOnly ? undefined : () => hideColumn(column.id)}
-              onMinimize={readOnly ? undefined : () => minimizeColumn(column.id)}
-              onExpand={readOnly ? undefined : () => expandColumn(column.id)}
+              onMinimize={() => minimizeColumn(column.id)}
+              onExpand={() => expandColumn(column.id)}
               minimized={isMinimized}
               clientColorMap={clientColorMap}
               assigneeOptions={assigneeOptions}
@@ -1766,9 +1853,9 @@ export default function Board({ data, onRefresh, readOnly, initialView }: BoardP
               defaultClient={filterClients.size === 1 ? [...filterClients][0] : null}
               visibleProperties={effectiveCardProps}
               showClient={showClientOnCards}
-              onColumnDragStart={readOnly ? undefined : () => handleColumnDragStart(column.id)}
-              onColumnDragEnd={readOnly ? undefined : handleColumnDragEnd}
-              onColumnDrop={readOnly ? undefined : () => handleColumnDrop(column.id)}
+              onColumnDragStart={() => handleColumnDragStart(column.id)}
+              onColumnDragEnd={handleColumnDragEnd}
+              onColumnDrop={() => handleColumnDrop(column.id)}
               isColumnDragging={draggingColumnId === column.id}
               readOnly={readOnly}
             />

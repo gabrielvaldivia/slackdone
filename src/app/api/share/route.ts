@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { viewId } = await request.json();
+    const { viewId, mode = "readonly" } = await request.json();
     if (!viewId) {
       return NextResponse.json({ error: "viewId required" }, { status: 400 });
     }
@@ -25,6 +25,7 @@ export async function POST(request: NextRequest) {
       userId: session.userId,
       viewId,
       viewSnapshot: view,
+      mode: mode === "edit" ? "edit" : "readonly",
       createdAt: Date.now(),
     });
 

@@ -19,6 +19,7 @@ export async function GET(
     return NextResponse.json({
       board,
       view: share.viewSnapshot,
+      mode: share.mode || "readonly",
     });
   } catch (err) {
     console.error("Shared board error:", err);

@@ -16,6 +16,7 @@ export default function SharedBoardPage() {
   const { token } = useParams<{ token: string }>();
   const [boardData, setBoardData] = useState<UnifiedBoardData | null>(null);
   const [view, setView] = useState<SharedView | null>(null);
+  const [mode, setMode] = useState<"readonly" | "edit">("readonly");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -33,6 +34,7 @@ export default function SharedBoardPage() {
       .then((data) => {
         setBoardData(data.board);
         setView(data.view);
+        setMode(data.mode || "readonly");
       })
       .catch((err) => {
         setError(err.message || "Failed to load shared board");
@@ -43,7 +45,7 @@ export default function SharedBoardPage() {
   if (loading) {
     return (
       <div className="flex h-dvh flex-col">
-        <SharedHeader viewName="" />
+        <SharedHeader viewName="" mode="readonly" />
         <div className="flex flex-1 items-center justify-center">
           <p className="text-sm text-muted-foreground">Loading...</p>
         </div>
@@ -54,7 +56,7 @@ export default function SharedBoardPage() {
   if (error || !boardData) {
     return (
       <div className="flex h-dvh flex-col">
-        <SharedHeader viewName="" />
+        <SharedHeader viewName="" mode="readonly" />
         <div className="flex flex-1 items-center justify-center">
           <p className="text-sm text-muted-foreground">
             {error || "Shared board not found"}
@@ -64,20 +66,23 @@ export default function SharedBoardPage() {
     );
   }
 
+  const isReadOnly = mode === "readonly";
+
   return (
     <div className="flex h-dvh flex-col">
-      <SharedHeader viewName={view?.name || "Shared View"} />
+      <SharedHeader viewName={view?.name || "Shared View"} mode={mode} />
       <Board
         data={boardData}
         onRefresh={() => {}}
-        readOnly
+        readOnly={isReadOnly}
         initialView={view || undefined}
+        shareToken={isReadOnly ? undefined : token}
       />
     </div>
   );
 }
 
-function SharedHeader({ viewName }: { viewName: string }) {
+function SharedHeader({ viewName, mode }: { viewName: string; mode: "readonly" | "edit" }) {
   return (
     <header className="flex h-12 shrink-0 items-center justify-between border-b border-border px-4">
       <div className="flex items-center gap-3">
@@ -89,7 +94,9 @@ function SharedHeader({ viewName }: { viewName: string }) {
           </>
         )}
       </div>
-      <span className="text-xs text-muted-foreground">Read-only</span>
+      <span className="text-xs text-muted-foreground">
+        {mode === "edit" ? "Editable" : "Read-only"}
+      </span>
     </header>
   );
 }
