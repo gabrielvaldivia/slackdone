@@ -18,9 +18,10 @@ interface FieldEditorProps {
   field: BoardItemField;
   schema?: SchemaField;
   onUpdate: (value: unknown) => void;
+  portalContainer?: HTMLElement | null;
 }
 
-export default function FieldEditor({ field, schema, onUpdate }: FieldEditorProps) {
+export default function FieldEditor({ field, schema, onUpdate, portalContainer }: FieldEditorProps) {
   const type = field.type;
 
   // Select / Status
@@ -37,7 +38,7 @@ export default function FieldEditor({ field, schema, onUpdate }: FieldEditorProp
         <SelectTrigger className="w-full">
           <SelectValue placeholder="None" />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent container={portalContainer}>
           <SelectItem value="_none_">None</SelectItem>
           {options.map((opt) => (
             <SelectItem key={opt.value} value={opt.value}>
