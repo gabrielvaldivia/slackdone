@@ -279,8 +279,53 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
   const [isDesktopApp, setIsDesktopApp] = useState(false);
   const [desktopPortal, setDesktopPortal] = useState<HTMLElement | null>(null);
 
+  // Pending optimistic updates buffer — survives data refreshes until server catches up
+  const pendingUpdatesRef = useRef<Map<string, { itemId: string; columnId: string; value: unknown; displayValue: string; fieldType?: string; timestamp: number }>>(new Map());
+
+  const applyPendingUpdates = useCallback((cols: BoardColumnType[]): BoardColumnType[] => {
+    const pending = pendingUpdatesRef.current;
+    if (pending.size === 0) return cols;
+    // Purge entries older than 15 seconds
+    const now = Date.now();
+    for (const [key, entry] of pending) {
+      if (now - entry.timestamp > 15000) pending.delete(key);
+    }
+    if (pending.size === 0) return cols;
+    return cols.map((col) => ({
+      ...col,
+      items: col.items.map((item) => {
+        let fields = item.fields;
+        let changed = false;
+        for (const entry of pending.values()) {
+          if (entry.itemId !== item.id) continue;
+          // Check if server already has the updated value
+          const existing = fields?.find((f) => f.columnId === entry.columnId);
+          if (existing && existing.displayValue === entry.displayValue) continue;
+          changed = true;
+          const found = fields?.some((f) => f.columnId === entry.columnId);
+          if (found) {
+            fields = fields!.map((f) =>
+              f.columnId === entry.columnId ? { ...f, value: entry.value, displayValue: entry.displayValue } : f
+            );
+          } else {
+            const sf = (data.schema || []).find((s) => s.id === entry.columnId || s.key === entry.columnId);
+            fields = [...(fields || []), {
+              columnId: entry.columnId,
+              key: sf?.key || entry.columnId,
+              type: entry.fieldType || sf?.type || "unknown",
+              label: sf?.label || entry.columnId,
+              value: entry.value,
+              displayValue: entry.displayValue,
+            }];
+          }
+        }
+        return changed ? { ...item, fields } : item;
+      }),
+    }));
+  }, [data.schema]);
+
   useEffect(() => {
-    const newColumns = applyColumnOrder(data.columns, columnOrder);
+    const newColumns = applyPendingUpdates(applyColumnOrder(data.columns, columnOrder));
     setColumns(newColumns);
     // Keep selectedItem in sync with refreshed data
     setSelectedItem((prev) => {
@@ -1133,6 +1178,12 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
         displayValue,
       }];
     };
+
+    // Buffer the optimistic update so it survives data refreshes
+    const pendingKey = `${itemId}:${columnId}`;
+    pendingUpdatesRef.current.set(pendingKey, {
+      itemId, columnId, value, displayValue, fieldType, timestamp: Date.now(),
+    });
 
     setColumns((prev) =>
       prev.map((col) => ({
