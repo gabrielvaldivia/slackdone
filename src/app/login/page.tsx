@@ -82,7 +82,7 @@ function LoginContent() {
       </section>
 
       {/* App screenshot — desktop version */}
-      <section className="relative max-w-5xl mx-auto px-6 overflow-hidden max-h-[40vw] hidden sm:block">
+      <section className="relative max-w-5xl mx-auto px-6 overflow-hidden max-h-[50vh] hidden sm:block">
         <div className="rounded-t-xl border border-b-0 border-border overflow-hidden">
           <Image
             src="/screenshot.png"
@@ -115,28 +115,31 @@ function LoginContent() {
           <FeatureCard
             color="#3b82f6"
             title="Multiple workspaces"
-            description="Connect all your Slack workspaces and manage lists from a single view."
+            description="Connect all your Slack workspaces and manage your lists from a single view."
           />
           <FeatureCard
             color="#6366f1"
             title="Show only what matters"
-            description="Blazing-fast seach or filter by assignee, status, or any property."
+            description="Blazing-fast search or filter by assignee, status, or any other property."
           />
           <FeatureCard
             color="#f59e0b"
             title="Saved views"
             description="Save your favorite filter combinations and switch between them instantly."
           />
-          <FeatureCard
-            color="#ec4899"
-            title="Desktop app"
-            description="A native macOS app with its own window, keyboard shortcuts, and notifications."
-          />
+
           <FeatureCard
             color="#8b5cf6"
             title="Mobile optimized"
             description="Slackdone is designed to be used on the go with a mobile-friendly interface."
           />
+
+          <FeatureCard
+            color="#ec4899"
+            title="Desktop app"
+            description="A native macOS app with its own window, keyboard shortcuts, and notifications."
+          />
+
           <FeatureCard
             color="#14b8a6"
             title="API"
