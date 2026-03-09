@@ -105,7 +105,7 @@ export default function Card({ item, columnId, clientColorMap, visibleProperties
           sourceWorkspaceId: item.sourceWorkspaceId,
           sourceListId: item.sourceListId,
         });
-        e.dataTransfer.setData("text/plain", payload);
+        e.dataTransfer.setData("application/card-drag", payload);
         e.dataTransfer.effectAllowed = "move";
         (e.target as HTMLElement).style.opacity = "0.5";
       }}

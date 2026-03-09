@@ -118,7 +118,7 @@ export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDe
             dragCounter.current = 0;
             setDragOver(false);
             try {
-              const data = JSON.parse(e.dataTransfer.getData("text/plain"));
+              const data = JSON.parse(e.dataTransfer.getData("application/card-drag"));
               onDrop(data.itemId, data.sourceColumnId, column.id);
             } catch {
               // ignore invalid drag data
@@ -191,7 +191,7 @@ export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDe
           const currentDropIndex = dropIndex;
           setDropIndex(null);
           try {
-            const data = JSON.parse(e.dataTransfer.getData("text/plain"));
+            const data = JSON.parse(e.dataTransfer.getData("application/card-drag"));
             onDrop(data.itemId, data.sourceColumnId, column.id, currentDropIndex ?? undefined);
           } catch {
             // ignore invalid drag data
