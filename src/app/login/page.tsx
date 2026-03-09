@@ -14,7 +14,7 @@ function LoginContent() {
     if (!ctaRef.current) return;
     const observer = new IntersectionObserver(
       ([entry]) => setShowNav(!entry.isIntersecting),
-      { threshold: 0 }
+      { threshold: 0 },
     );
     observer.observe(ctaRef.current);
     return () => observer.disconnect();
@@ -25,7 +25,9 @@ function LoginContent() {
       {/* Nav — appears after scrolling past CTA */}
       <nav
         className={`fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-border transition-all duration-300 ${
-          showNav ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-full pointer-events-none"
+          showNav
+            ? "opacity-100 translate-y-0"
+            : "opacity-0 -translate-y-full pointer-events-none"
         }`}
       >
         <div className="flex items-center justify-between px-6 py-3 max-w-5xl mx-auto">
@@ -79,26 +81,46 @@ function LoginContent() {
         </a>
       </section>
 
-      {/* App screenshot placeholder — clipped at bottom by divider */}
-      <section className="relative max-w-5xl mx-auto px-6 overflow-hidden max-h-[60vw] sm:max-h-[40vw]">
-        <div className="rounded-t-xl border border-b-0 border-border bg-muted aspect-[16/10] flex items-center justify-center">
-          <span className="text-sm text-muted-foreground">App screenshot</span>
+      {/* App screenshot — desktop version */}
+      <section className="relative max-w-5xl mx-auto px-6 overflow-hidden max-h-[40vw] hidden sm:block">
+        <div className="rounded-t-xl border border-b-0 border-border overflow-hidden">
+          <Image
+            src="/screenshot.png"
+            alt="Slackdone app screenshot"
+            width={1920}
+            height={1200}
+            className="block w-full"
+            priority
+          />
+        </div>
+      </section>
+      {/* App screenshot — mobile version */}
+      <section className="relative max-w-[340px] mx-auto px-6 overflow-hidden max-h-[92vw] sm:hidden">
+        <div className="rounded-t-[24px] border border-b-0 border-border overflow-hidden aspect-[9/19.5]">
+          <Image
+            src="/screenshot-mobile.png"
+            alt="Slackdone mobile app screenshot"
+            width={390}
+            height={844}
+            className="block w-full h-full object-cover object-top"
+            priority
+          />
         </div>
       </section>
       <div className="border-t border-border" />
 
       {/* Features */}
       <section className="max-w-5xl mx-auto px-6 pt-24 pb-24">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-20">
           <FeatureCard
             color="#3b82f6"
             title="Multiple workspaces"
-            description="Connect all your Slack workspaces and manage lists from each one in a single view."
+            description="Connect all your Slack workspaces and manage lists from a single view."
           />
           <FeatureCard
             color="#6366f1"
-            title="Filters & properties"
-            description="Filter by assignee, status, or any property. Show only what matters right now."
+            title="Show only what matters"
+            description="Blazing-fast seach or filter by assignee, status, or any property."
           />
           <FeatureCard
             color="#f59e0b"
@@ -107,18 +129,18 @@ function LoginContent() {
           />
           <FeatureCard
             color="#ec4899"
-            title="Mac app"
-            description="A native macOS app with its own window, keyboard shortcuts, and deep link support."
+            title="Desktop app"
+            description="A native macOS app with its own window, keyboard shortcuts, and notifications."
           />
           <FeatureCard
             color="#8b5cf6"
-            title="Notifications"
-            description="Stay on top of changes with real-time updates when items are moved or assigned to you."
+            title="Mobile optimized"
+            description="Slackdone is designed to be used on the go with a mobile-friendly interface."
           />
           <FeatureCard
             color="#14b8a6"
             title="API"
-            description="Connect to your favorite LLM or build custom integrations with a simple REST API."
+            description="Connect to your favorite LLM or build custom integrations with a REST API."
           />
         </div>
       </section>
@@ -138,10 +160,16 @@ function LoginContent() {
             </a>
           </p>
           <div className="flex items-center gap-4">
-            <a href="/privacy" className="text-xs text-muted-foreground underline hover:text-foreground transition-colors">
+            <a
+              href="/privacy"
+              className="text-xs text-muted-foreground underline hover:text-foreground transition-colors"
+            >
               Privacy
             </a>
-            <a href="/terms" className="text-xs text-muted-foreground underline hover:text-foreground transition-colors">
+            <a
+              href="/terms"
+              className="text-xs text-muted-foreground underline hover:text-foreground transition-colors"
+            >
               Terms
             </a>
           </div>
