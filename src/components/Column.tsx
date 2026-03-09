@@ -218,18 +218,6 @@ export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDe
           {column.name}
           <span className="text-white/70">{column.items.length}</span>
         </span>
-        {!readOnly && (
-          <button
-            onClick={() => setTopFormOpen(true)}
-            className="flex h-6 w-6 items-center justify-center rounded opacity-30 sm:opacity-0 transition-opacity group-hover/col:opacity-30 hover:opacity-50"
-            title="Add item"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="12" y1="5" x2="12" y2="19" />
-              <line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
-          </button>
-        )}
         {readOnly && onMinimize && (
           <button
             onClick={onMinimize}
@@ -244,8 +232,20 @@ export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDe
             </svg>
           </button>
         )}
-        {!readOnly && (onHide || onMinimize) && (
-          <div className="opacity-30 sm:opacity-0 transition-opacity group-hover/col:opacity-30 hover:opacity-50">
+        {!readOnly && (
+          <div className="flex items-center gap-0.5 opacity-30 sm:opacity-0 transition-opacity group-hover/col:opacity-30 hover:opacity-50">
+          <button
+            onClick={() => setTopFormOpen(true)}
+            className="flex h-6 w-6 items-center justify-center rounded"
+            title="Add item"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+          </button>
+        {(onHide || onMinimize) && (
+          <div>
             <button
               ref={menuBtnRef}
               onClick={() => {
@@ -300,6 +300,7 @@ export default function Column({ column, colorIndex = 0, onDrop, onAddItem, onDe
             )}
           </div>
         )}
+        </div>)}
       </div>
 
       <div ref={listRef} className="flex flex-1 flex-col gap-2 overflow-y-auto px-2 pt-1 pb-2">
