@@ -965,17 +965,30 @@ export default function Board({ data, onRefresh }: BoardProps) {
       const realColumnId = (rawField?.column_id as string) || columnId;
 
       const cell: Record<string, unknown> = { column_id: realColumnId };
-      // Determine the field type to use the right cell key
+      // Determine the field type to use the correct Slack cell format
       const fieldDef = targetItem.fields?.find((f) => f.columnId === columnId);
       const resolvedType = fieldType || fieldDef?.type || (rawField?.type as string);
-      if (resolvedType === "people" && Array.isArray(value)) {
+
+      if ((resolvedType === "people" || resolvedType === "user") && Array.isArray(value)) {
         cell.user = value;
-      } else if (Array.isArray(value)) {
+      } else if ((resolvedType === "select" || resolvedType === "status") && Array.isArray(value)) {
         cell.select = value;
-      } else if (
-        (resolvedType === "text" || resolvedType === "rich_text") &&
-        typeof value === "string"
-      ) {
+      } else if (resolvedType === "date" && typeof value === "string") {
+        cell.date = [value];
+      } else if (resolvedType === "number") {
+        cell.number = [typeof value === "number" ? value : Number(value)];
+      } else if (resolvedType === "link" && typeof value === "string") {
+        cell.link = [
+          {
+            original_url: value,
+            display_as_url: true,
+            display_name: value,
+          },
+        ];
+      } else if (resolvedType === "checkbox") {
+        cell.checkbox = Boolean(value);
+      } else if (typeof value === "string") {
+        // Default for text, rich_text, message, and any other text-like types
         cell.rich_text = [
           {
             type: "rich_text",
@@ -987,10 +1000,8 @@ export default function Board({ data, onRefresh }: BoardProps) {
             ],
           },
         ];
-      } else if (typeof value === "string") {
-        cell.value = value;
-      } else if (typeof value === "number") {
-        cell.number = value;
+      } else if (Array.isArray(value)) {
+        cell.select = value;
       }
 
       const res = await fetch(
@@ -1005,7 +1016,11 @@ export default function Board({ data, onRefresh }: BoardProps) {
         }
       );
 
-      if (!res.ok) throw new Error("Update field failed");
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        console.error("Update field failed:", body);
+        throw new Error(body.error || "Update field failed");
+      }
     } catch (err) {
       console.error("Update field error:", err);
       onRefresh();

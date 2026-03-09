@@ -74,17 +74,17 @@ export default function FieldEditor({ field, schema, onUpdate }: FieldEditorProp
     return <DateField initialValue={(field.value as string) || ""} onUpdate={onUpdate} />;
   }
 
-  // Text / Rich text — use tiptap editor
-  if (type === "text" || type === "rich_text") {
-    return <RichTextEditor initialValue={field.displayValue || ""} onUpdate={(v) => onUpdate(v)} placeholder="Empty" />;
-  }
-
   // Number
   if (type === "number") {
     return <NumberField initialValue={field.displayValue || ""} onUpdate={onUpdate} />;
   }
 
-  // Unknown — treat as editable text
+  // Text / Rich text / Message — use tiptap editor
+  if (type === "text" || type === "rich_text" || type === "message") {
+    return <RichTextEditor initialValue={field.displayValue || ""} onUpdate={(v) => onUpdate(v)} placeholder="Empty" />;
+  }
+
+  // Link, unknown, and other types — plain text input
   return <StringField initialValue={field.displayValue || ""} onUpdate={onUpdate} />;
 }
 
@@ -127,3 +127,4 @@ function StringField({ initialValue, onUpdate }: { initialValue: string; onUpdat
     />
   );
 }
+

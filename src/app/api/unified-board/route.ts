@@ -384,14 +384,26 @@ async function fetchSingleBoard(
           displayValue = selectIds.join(", ");
         }
       } else if (fieldType === "date" || field.date) {
-        rawValue = field.date || field.value;
+        const dateVal = field.date || field.value;
+        rawValue = Array.isArray(dateVal) ? dateVal[0] : dateVal;
         displayValue = typeof rawValue === "string" ? rawValue : "";
+      } else if (fieldType === "link" || field.link) {
+        const linkArr = field.link || field.value;
+        if (Array.isArray(linkArr) && linkArr.length > 0) {
+          const linkObj = linkArr[0];
+          rawValue = linkObj.original_url || linkObj.url || "";
+          displayValue = typeof rawValue === "string" ? rawValue : "";
+        } else {
+          rawValue = field.value;
+          displayValue = typeof rawValue === "string" ? rawValue : "";
+        }
       } else if (field.text) {
         rawValue = field.text;
         displayValue = field.text;
       } else if (field.number !== undefined) {
-        rawValue = field.number;
-        displayValue = String(field.number);
+        const numVal = field.number;
+        rawValue = Array.isArray(numVal) ? numVal[0] : numVal;
+        displayValue = rawValue != null ? String(rawValue) : "";
       } else {
         rawValue = field.value;
         displayValue = extractTextFromField(field) || "";

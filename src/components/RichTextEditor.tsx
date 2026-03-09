@@ -3,6 +3,7 @@
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
+import Link from "@tiptap/extension-link";
 import { useRef, useEffect } from "react";
 import TurndownService from "turndown";
 import { marked } from "marked";
@@ -11,6 +12,22 @@ const turndown = new TurndownService({
   headingStyle: "atx",
   bulletListMarker: "-",
 });
+
+// Preserve bare URLs: [url](url) → url
+turndown.addRule("bareLink", {
+  filter: (node) =>
+    node.nodeName === "A" &&
+    node.getAttribute("href") === node.textContent,
+  replacement: (_content, node) =>
+    (node as HTMLAnchorElement).getAttribute("href") || _content,
+});
+
+// Convert markdown→HTML for tiptap, preserving bare URLs as text
+function markdownToHtml(md: string): string {
+  const html = marked.parse(md) as string;
+  // Undo marked's auto-linking: <a href="URL">URL</a> → URL (when text === href)
+  return html.replace(/<a href="([^"]+)">\1<\/a>/g, "$1");
+}
 
 interface RichTextEditorProps {
   initialValue: string;
@@ -37,9 +54,10 @@ export default function RichTextEditor({
     immediatelyRender: false,
     extensions: [
       StarterKit,
+      Link.configure({ openOnClick: true, autolink: true }),
       Placeholder.configure({ placeholder }),
     ],
-    content: initialValue ? (marked.parse(initialValue) as string) : "",
+    content: initialValue ? markdownToHtml(initialValue) : "",
     editorProps: {
       attributes: {
         class:

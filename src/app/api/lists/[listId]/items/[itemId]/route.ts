@@ -47,7 +47,7 @@ export async function PATCH(
         // Object wrapper: pass known type keys through directly
         // e.g. {"user": ["U07..."]} or {"select": ["Opt..."]}
         const obj = value as Record<string, unknown>;
-        for (const k of ["user", "select", "date", "number", "value", "rich_text"]) {
+        for (const k of ["user", "select", "date", "number", "rich_text", "link", "checkbox", "rating", "channel"]) {
           if (k in obj) {
             cell[k] = obj[k];
           }
@@ -57,7 +57,18 @@ export async function PATCH(
       } else if (typeof value === "number") {
         cell.number = value;
       } else {
-        cell.value = String(value);
+        // Slack Lists API requires rich_text format for all text-like values
+        cell.rich_text = [
+          {
+            type: "rich_text",
+            elements: [
+              {
+                type: "rich_text_section",
+                elements: [{ type: "text", text: String(value) }],
+              },
+            ],
+          },
+        ];
       }
       return cell;
     });
@@ -72,7 +83,6 @@ export async function PATCH(
   const statusLabel = body.statusLabel as string | undefined;
 
   try {
-    console.log("PATCH cells:", JSON.stringify(normalizedCells, null, 2));
     const data = await updateListItem(
       workspace.userToken || workspace.botToken,
       listId,
