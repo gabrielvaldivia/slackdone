@@ -45,6 +45,8 @@ export default function SharedBoardPage() {
 
   useEffect(() => {
     fetchBoard();
+    const interval = setInterval(fetchBoard, 30000);
+    return () => clearInterval(interval);
   }, [fetchBoard]);
 
   if (loading) {
