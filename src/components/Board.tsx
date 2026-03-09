@@ -50,18 +50,20 @@ function loadColumnOrder(): string[] {
 }
 
 // Save to both localStorage (fast) and backend (persistent)
-function saveBoardPreferences(columnOrder: string[], hiddenColumns: Set<string>, minimizedColumns: Set<string>) {
+function saveBoardPreferences(columnOrder: string[], hiddenColumns: Set<string>, minimizedColumns: Set<string>, fieldOrder?: string[]) {
   localStorage.setItem(ORDER_KEY, JSON.stringify(columnOrder));
   localStorage.setItem(HIDDEN_KEY, JSON.stringify([...hiddenColumns]));
   localStorage.setItem(MINIMIZED_KEY, JSON.stringify([...minimizedColumns]));
+  const payload: Record<string, unknown> = {
+    columnOrder,
+    hiddenColumns: [...hiddenColumns],
+    minimizedColumns: [...minimizedColumns],
+  };
+  if (fieldOrder) payload.fieldOrder = fieldOrder;
   fetch("/api/preferences", {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      columnOrder,
-      hiddenColumns: [...hiddenColumns],
-      minimizedColumns: [...minimizedColumns],
-    }),
+    body: JSON.stringify(payload),
   }).catch(() => {});
 }
 
@@ -129,6 +131,8 @@ function applyColumnOrder(columns: BoardColumnType[], savedOrder: string[]): Boa
 
 export default function Board({ data, onRefresh }: BoardProps) {
   const [columnOrder, setColumnOrder] = useState<string[]>(loadColumnOrder);
+  const [fieldOrder, setFieldOrder] = useState<string[]>([]);
+  const fieldOrderRef = useRef<string[]>([]);
   const [columns, setColumns] = useState<BoardColumnType[]>(() =>
     applyColumnOrder(data.columns, loadColumnOrder())
   );
@@ -197,6 +201,10 @@ export default function Board({ data, onRefresh }: BoardProps) {
         if (prefs.minimizedColumns) {
           setMinimizedColumns(new Set(prefs.minimizedColumns));
           localStorage.setItem(MINIMIZED_KEY, JSON.stringify(prefs.minimizedColumns));
+        }
+        if (prefs.fieldOrder?.length) {
+          setFieldOrder(prefs.fieldOrder);
+          fieldOrderRef.current = prefs.fieldOrder;
         }
       })
       .catch(() => {});
@@ -1685,7 +1693,7 @@ export default function Board({ data, onRefresh }: BoardProps) {
       {selectedItem && (
         <CardDetailModal
           item={selectedItem}
-          schema={data.schema || []}
+          schema={(data.schema || []).filter((s) => !s.sourceListId || s.sourceListId === selectedItem.sourceListId)}
           onClose={() => setSelectedItem(null)}
           onRename={(newTitle) => handleRenameItem(selectedItem.id, newTitle)}
           onUpdateField={(columnId, value) =>
@@ -1701,6 +1709,12 @@ export default function Board({ data, onRefresh }: BoardProps) {
           onUpdateAssignees={(userIds) =>
             handleUpdateAssignees(selectedItem.id, userIds)
           }
+          fieldOrder={fieldOrder}
+          onFieldOrderChange={(order) => {
+            setFieldOrder(order);
+            fieldOrderRef.current = order;
+            saveBoardPreferences(columnOrderRef.current, hiddenColumnsRef.current, minimizedColumnsRef.current, order);
+          }}
         />
       )}
     </div>

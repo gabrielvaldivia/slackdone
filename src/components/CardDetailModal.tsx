@@ -36,6 +36,8 @@ interface CardDetailModalProps {
   onDelete?: () => void;
   assigneeOptions?: FilterOption[];
   onUpdateAssignees?: (userIds: string[]) => void;
+  fieldOrder?: string[];
+  onFieldOrderChange?: (order: string[]) => void;
 }
 
 function getInitials(name: string): string {
@@ -56,11 +58,15 @@ export default function CardDetailModal({
   onDelete,
   assigneeOptions = [],
   onUpdateAssignees,
+  fieldOrder = [],
+  onFieldOrderChange,
 }: CardDetailModalProps) {
   const [title, setTitle] = useState(item.title);
   const [assigneePopoverOpen, setAssigneePopoverOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const isDesktop = useMediaQuery("(min-width: 640px)");
+  const dragFieldRef = useRef<string | null>(null);
+  const [dragOverFieldId, setDragOverFieldId] = useState<string | null>(null);
 
   useEffect(() => {
     setTitle(item.title);
@@ -256,30 +262,114 @@ export default function CardDetailModal({
         </div>
       </div>
 
-      {/* Fields */}
-      {fields.map((field) => {
-        if (field.type === "people" || field.type === "user") return null;
-        if (field.key === "todo_completed" || field.label === "TODO_COMPLETED") return null;
+      {/* Fields — show all schema fields, even empty ones, drag to reorder */}
+      {(() => {
+        // Build sets of all identifiers for fields already on the item
+        const existingColumnIds = new Set(fields.map((f) => f.columnId));
+        const existingKeys = new Set(fields.map((f) => f.key));
+        for (const f of fields) {
+          const sf = schemaMap.get(f.columnId) || schemaByKey.get(f.key);
+          if (sf) {
+            existingColumnIds.add(sf.id);
+            existingKeys.add(sf.key);
+          }
+        }
 
-        const sf = schemaMap.get(field.columnId) || schemaByKey.get(field.key);
+        // Build unified list of field entries: { id, label, field, schema }
+        type FieldEntry = { id: string; label: string; field: { columnId: string; key: string; type: string; label: string; value: unknown; displayValue: string }; sf?: SchemaField };
 
-        return (
-          <div key={field.columnId || field.key} className="space-y-2">
-            <Label className="text-xs uppercase tracking-wider text-muted-foreground">
-              {field.label}
+        const entries: FieldEntry[] = [];
+        const seenIds = new Set<string>();
+
+        // Existing fields
+        for (const field of fields) {
+          if (field.type === "people" || field.type === "user") continue;
+          if (field.key === "todo_completed" || field.label === "TODO_COMPLETED") continue;
+          const sf = schemaMap.get(field.columnId) || schemaByKey.get(field.key);
+          const id = sf?.id || field.columnId || field.key;
+          if (seenIds.has(id)) continue;
+          seenIds.add(id);
+          entries.push({ id, label: field.label, field, sf });
+        }
+
+        // Empty fields from schema
+        for (const sf of schema) {
+          if (sf.type === "people" || sf.type === "user") continue;
+          if (sf.key === "name" || sf.key === "todo_completed") continue;
+          if (seenIds.has(sf.id)) continue;
+          if (existingColumnIds.has(sf.id) || existingKeys.has(sf.key)) continue;
+          seenIds.add(sf.id);
+          entries.push({
+            id: sf.id,
+            label: sf.label,
+            field: { columnId: sf.id, key: sf.key, type: sf.type, label: sf.label, value: null, displayValue: "" },
+            sf,
+          });
+        }
+
+        // Sort by fieldOrder
+        if (fieldOrder.length > 0) {
+          const orderMap = new Map(fieldOrder.map((id, i) => [id, i]));
+          entries.sort((a, b) => {
+            const ai = orderMap.get(a.id) ?? 999;
+            const bi = orderMap.get(b.id) ?? 999;
+            return ai - bi;
+          });
+        }
+
+        const handleDragStart = (id: string) => {
+          dragFieldRef.current = id;
+        };
+
+        const handleDragOver = (e: React.DragEvent, id: string) => {
+          e.preventDefault();
+          setDragOverFieldId(id);
+        };
+
+        const handleDrop = (targetId: string) => {
+          const sourceId = dragFieldRef.current;
+          dragFieldRef.current = null;
+          setDragOverFieldId(null);
+          if (!sourceId || sourceId === targetId) return;
+
+          const ids = entries.map((e) => e.id);
+          const fromIdx = ids.indexOf(sourceId);
+          const toIdx = ids.indexOf(targetId);
+          if (fromIdx < 0 || toIdx < 0) return;
+
+          const next = [...ids];
+          next.splice(fromIdx, 1);
+          next.splice(toIdx, 0, sourceId);
+          onFieldOrderChange?.(next);
+        };
+
+        const handleDragEnd = () => {
+          dragFieldRef.current = null;
+          setDragOverFieldId(null);
+        };
+
+        return entries.map((entry) => (
+          <div
+            key={entry.id}
+            draggable
+            onDragStart={() => handleDragStart(entry.id)}
+            onDragOver={(e) => handleDragOver(e, entry.id)}
+            onDrop={() => handleDrop(entry.id)}
+            onDragEnd={handleDragEnd}
+            className={`space-y-2 ${dragOverFieldId === entry.id ? "border-t-2 border-foreground" : ""}`}
+          >
+            <Label className="relative text-xs uppercase tracking-wider text-muted-foreground cursor-grab group/field">
+              <span className="absolute -left-3.5 opacity-0 group-hover/field:opacity-100 transition-opacity text-muted-foreground/50">⠿</span>
+              {entry.label}
             </Label>
             <FieldEditor
-              field={field}
-              schema={sf}
-              onUpdate={(value) => onUpdateField(field.columnId, value)}
+              field={entry.field}
+              schema={entry.sf}
+              onUpdate={(value) => onUpdateField(entry.field.columnId, value)}
             />
           </div>
-        );
-      })}
-
-      {fields.length === 0 && assignees.length === 0 && (
-        <p className="text-sm text-muted-foreground">No additional fields</p>
-      )}
+        ));
+      })()}
     </div>
   );
 

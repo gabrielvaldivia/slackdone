@@ -64,6 +64,7 @@ export interface SchemaField {
   type: string;
   label: string;
   options?: { value: string; label: string; color?: string }[];
+  sourceListId?: string;
 }
 
 // Parsed field on a board item
