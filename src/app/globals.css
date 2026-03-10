@@ -5,6 +5,11 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Tauri window drag region support (touch + pen input) */
+*[data-tauri-drag-region] {
+  app-region: drag;
+}
+
 :root {
   --border: oklch(0.922 0 0);
   --muted: oklch(0.97 0 0);

@@ -138,7 +138,7 @@ export default function Header({
   };
 
   return (
-    <header className={`relative flex items-center justify-between bg-white px-4 py-3 ${isDesktopApp ? "pl-20" : "border-b border-border"}`} style={{ WebkitAppRegion: "drag" } as React.CSSProperties}>
+    <header className={`relative flex items-center justify-between bg-white px-4 py-3 ${isDesktopApp ? "pl-20" : "border-b border-border"}`} data-tauri-drag-region style={{ WebkitAppRegion: "drag" } as React.CSSProperties}>
       <div className="flex items-center gap-4 min-w-0 flex-1">
         {!isDesktopApp && (
           <div className="flex items-center gap-1.5 shrink-0">
