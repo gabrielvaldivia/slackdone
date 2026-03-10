@@ -28,7 +28,28 @@ fn main() {
                 .hidden_title(true)
                 .traffic_light_position(tauri::Position::Logical(tauri::LogicalPosition::new(14.0, 22.0)))
                 .disable_drag_drop_handler()
-                .initialization_script("window.__TAURI_APP__ = true;")
+                .initialization_script(r#"
+                    window.__TAURI_APP__ = true;
+                    console.log('[Tauri] Init script running. __TAURI_INTERNALS__:', typeof window.__TAURI_INTERNALS__);
+                    document.addEventListener('mousedown', function(e) {
+                        if (e.buttons !== 1) return;
+                        var el = e.target;
+                        while (el) {
+                            if (el.tagName === 'BUTTON' || el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.tagName === 'A') return;
+                            if (el.getAttribute && el.getAttribute('data-tauri-drag-region') !== null) {
+                                console.log('[Tauri] Drag region hit. __TAURI_INTERNALS__:', typeof window.__TAURI_INTERNALS__, window.__TAURI_INTERNALS__);
+                                if (window.__TAURI_INTERNALS__ && window.__TAURI_INTERNALS__.invoke) {
+                                    e.preventDefault();
+                                    window.__TAURI_INTERNALS__.invoke('plugin:window|start_dragging', { label: 'main' })
+                                        .then(function() { console.log('[Tauri] startDragging succeeded'); })
+                                        .catch(function(err) { console.error('[Tauri] startDragging failed:', err); });
+                                }
+                                return;
+                            }
+                            el = el.parentElement;
+                        }
+                    });
+                "#)
                 .on_navigation(move |nav_url| {
                     let host = nav_url.host_str().unwrap_or("");
                     let path = nav_url.path();

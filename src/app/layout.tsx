@@ -13,6 +13,11 @@ const geistSans = Geist({
 export const metadata: Metadata = {
   title: "Slackdone",
   description: "Kanban board for Slack Lists",
+  manifest: "/manifest.json",
+  icons: {
+    icon: "/logo.png",
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 export default function RootLayout({
