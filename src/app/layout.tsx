@@ -4,6 +4,7 @@ import "./globals.css";
 import { DevDials } from "@/components/DevDials";
 import { Analytics } from "@vercel/analytics/react";
 import { Toaster } from "sonner";
+import { UpdateChecker } from "@/components/UpdateChecker";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -30,6 +31,7 @@ export default function RootLayout({
       <body className={`${geistSans.variable} antialiased`}>
         {children}
         <Toaster position="bottom-center" toastOptions={{ style: { width: "auto", borderRadius: "9999px", padding: "8px 12px" } }} />
+        <UpdateChecker />
         <Analytics />
         <DevDials />
       </body>

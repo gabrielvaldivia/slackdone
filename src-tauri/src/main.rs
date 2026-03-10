@@ -28,9 +28,12 @@ fn main() {
                 .hidden_title(true)
                 .traffic_light_position(tauri::Position::Logical(tauri::LogicalPosition::new(14.0, 22.0)))
                 .disable_drag_drop_handler()
+                .initialization_script(&format!(
+                    "window.__TAURI_APP__ = true; window.__TAURI_APP_VERSION__ = '{}';",
+                    env!("CARGO_PKG_VERSION")
+                ))
                 .initialization_script(r#"
-                    window.__TAURI_APP__ = true;
-                    console.log('[Tauri] Init script running. __TAURI_INTERNALS__:', typeof window.__TAURI_INTERNALS__);
+                    console.log('[Tauri] Init script running. Version:', window.__TAURI_APP_VERSION__);
                     document.addEventListener('mousedown', function(e) {
                         if (e.buttons !== 1) return;
                         var el = e.target;
