@@ -181,11 +181,9 @@ export default function CardDetailModal({
                 className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-destructive hover:bg-destructive/10"
                 onClick={() => {
                   setMenuOpen(false);
-                  if (window.confirm("Delete this item?")) {
-                    onDelete();
-                    onClose();
-                  }
-                }}
+                  onDelete();
+                  onClose();
+                }
               >
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="3 6 5 6 21 6" />
