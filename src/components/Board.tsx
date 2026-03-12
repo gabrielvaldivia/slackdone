@@ -57,7 +57,7 @@ function loadColumnOrder(): string[] {
 }
 
 // Save to both localStorage (fast) and backend (persistent)
-function saveBoardPreferences(columnOrder: string[], hiddenColumns: Set<string>, minimizedColumns: Set<string>, fieldOrder?: string[], localOnly?: boolean) {
+function saveBoardPreferences(columnOrder: string[], hiddenColumns: Set<string>, minimizedColumns: Set<string>, fieldOrder?: string[], localOnly?: boolean, itemOrder?: Record<string, string[]>) {
   localStorage.setItem(ORDER_KEY, JSON.stringify(columnOrder));
   localStorage.setItem(HIDDEN_KEY, JSON.stringify([...hiddenColumns]));
   localStorage.setItem(MINIMIZED_KEY, JSON.stringify([...minimizedColumns]));
@@ -68,6 +68,7 @@ function saveBoardPreferences(columnOrder: string[], hiddenColumns: Set<string>,
     minimizedColumns: [...minimizedColumns],
   };
   payload.fieldOrder = fieldOrder || [];
+  payload.itemOrder = itemOrder || {};
   fetch("/api/preferences", {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
@@ -117,6 +118,28 @@ function loadCardProperties(): string[] | null {
 
 function saveCardProperties(keys: string[]) {
   localStorage.setItem(CARD_PROPS_KEY, JSON.stringify(keys));
+}
+
+function applyItemOrder(columns: BoardColumnType[], savedItemOrder: Record<string, string[]>): BoardColumnType[] {
+  if (!savedItemOrder || Object.keys(savedItemOrder).length === 0) return columns;
+  return columns.map((col) => {
+    const order = savedItemOrder[col.id];
+    if (!order || order.length === 0) return col;
+    const itemMap = new Map(col.items.map((item) => [item.id, item]));
+    const ordered: BoardItem[] = [];
+    for (const id of order) {
+      const item = itemMap.get(id);
+      if (item) {
+        ordered.push(item);
+        itemMap.delete(id);
+      }
+    }
+    // Append any items not in the saved order (new items)
+    for (const item of itemMap.values()) {
+      ordered.push(item);
+    }
+    return { ...col, items: ordered };
+  });
 }
 
 function applyColumnOrder(columns: BoardColumnType[], savedOrder: string[]): BoardColumnType[] {
@@ -240,6 +263,8 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
   const [columnOrder, setColumnOrder] = useState<string[]>(loadColumnOrder);
   const [fieldOrder, setFieldOrder] = useState<string[]>([]);
   const fieldOrderRef = useRef<string[]>([]);
+  const [itemOrder, setItemOrder] = useState<Record<string, string[]>>({});
+  const itemOrderRef = useRef<Record<string, string[]>>({});
   const [columns, setColumns] = useState<BoardColumnType[]>(() =>
     applyColumnOrder(data.columns, loadColumnOrder())
   );
@@ -325,7 +350,7 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
   }, [data.schema]);
 
   useEffect(() => {
-    const newColumns = applyPendingUpdates(applyColumnOrder(data.columns, columnOrder));
+    const newColumns = applyPendingUpdates(applyItemOrder(applyColumnOrder(data.columns, columnOrder), itemOrderRef.current));
     setColumns(newColumns);
     // Keep selectedItem in sync with refreshed data
     setSelectedItem((prev) => {
@@ -390,6 +415,11 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
         if (prefs.fieldOrder?.length) {
           setFieldOrder(prefs.fieldOrder);
           fieldOrderRef.current = prefs.fieldOrder;
+        }
+        if (prefs.itemOrder && Object.keys(prefs.itemOrder).length > 0) {
+          setItemOrder(prefs.itemOrder);
+          itemOrderRef.current = prefs.itemOrder;
+          setColumns((prev) => applyItemOrder(prev, prefs.itemOrder));
         }
       })
       .catch(() => {});
@@ -642,7 +672,7 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
       const next = new Set(prev);
       next.add(id);
       hiddenColumnsRef.current = next;
-      saveBoardPreferences(columnOrderRef.current, next, minimizedColumnsRef.current, fieldOrderRef.current, readOnly);
+      saveBoardPreferences(columnOrderRef.current, next, minimizedColumnsRef.current, fieldOrderRef.current, readOnly, itemOrderRef.current);
       return next;
     });
   };
@@ -652,7 +682,7 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
       const next = new Set(prev);
       next.delete(id);
       hiddenColumnsRef.current = next;
-      saveBoardPreferences(columnOrderRef.current, next, minimizedColumnsRef.current, fieldOrderRef.current, readOnly);
+      saveBoardPreferences(columnOrderRef.current, next, minimizedColumnsRef.current, fieldOrderRef.current, readOnly, itemOrderRef.current);
       return next;
     });
   };
@@ -662,7 +692,7 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
       const next = new Set(prev);
       next.add(id);
       minimizedColumnsRef.current = next;
-      saveBoardPreferences(columnOrderRef.current, hiddenColumnsRef.current, next, fieldOrderRef.current, readOnly);
+      saveBoardPreferences(columnOrderRef.current, hiddenColumnsRef.current, next, fieldOrderRef.current, readOnly, itemOrderRef.current);
       return next;
     });
   };
@@ -672,7 +702,7 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
       const next = new Set(prev);
       next.delete(id);
       minimizedColumnsRef.current = next;
-      saveBoardPreferences(columnOrderRef.current, hiddenColumnsRef.current, next, fieldOrderRef.current, readOnly);
+      saveBoardPreferences(columnOrderRef.current, hiddenColumnsRef.current, next, fieldOrderRef.current, readOnly, itemOrderRef.current);
       return next;
     });
   };
@@ -884,7 +914,7 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
     }
     if (!draggedItem) return;
 
-    // Same-column reorder (local only)
+    // Same-column reorder
     if (sourceColumnId === targetColumnId && targetIndex !== undefined) {
       setColumns((prev) => {
         const next = prev.map((col) => ({ ...col, items: [...col.items] }));
@@ -895,6 +925,13 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
         const [item] = col.items.splice(itemIdx, 1);
         const insertAt = targetIndex > itemIdx ? targetIndex - 1 : targetIndex;
         col.items.splice(insertAt, 0, item);
+
+        // Persist item order
+        const newItemOrder = { ...itemOrderRef.current, [sourceColumnId]: col.items.map((i) => i.id) };
+        setItemOrder(newItemOrder);
+        itemOrderRef.current = newItemOrder;
+        saveBoardPreferences(columnOrderRef.current, hiddenColumnsRef.current, minimizedColumnsRef.current, fieldOrderRef.current, readOnly, newItemOrder);
+
         return next;
       });
       return;
@@ -1555,7 +1592,7 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
       const newOrder = next.map((c) => c.id);
       setColumnOrder(newOrder);
       columnOrderRef.current = newOrder;
-      saveBoardPreferences(newOrder, hiddenColumnsRef.current, minimizedColumnsRef.current, fieldOrderRef.current, readOnly);
+      saveBoardPreferences(newOrder, hiddenColumnsRef.current, minimizedColumnsRef.current, fieldOrderRef.current, readOnly, itemOrderRef.current);
       return next;
     });
     setDraggingColumnId(null);
@@ -2059,7 +2096,7 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
           onFieldOrderChange={readOnly ? undefined : (order) => {
             setFieldOrder(order);
             fieldOrderRef.current = order;
-            saveBoardPreferences(columnOrderRef.current, hiddenColumnsRef.current, minimizedColumnsRef.current, order);
+            saveBoardPreferences(columnOrderRef.current, hiddenColumnsRef.current, minimizedColumnsRef.current, order, undefined, itemOrderRef.current);
           }}
           readOnly={readOnly}
         />

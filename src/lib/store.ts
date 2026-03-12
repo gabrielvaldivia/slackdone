@@ -126,6 +126,7 @@ export interface BoardPreferences {
   hiddenColumns?: string[];
   minimizedColumns?: string[];
   fieldOrder?: string[];
+  itemOrder?: Record<string, string[]>;
 }
 
 export async function getBoardPreferences(userId: string): Promise<BoardPreferences | null> {
