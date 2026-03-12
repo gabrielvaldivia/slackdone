@@ -67,7 +67,7 @@ function saveBoardPreferences(columnOrder: string[], hiddenColumns: Set<string>,
     hiddenColumns: [...hiddenColumns],
     minimizedColumns: [...minimizedColumns],
   };
-  if (fieldOrder) payload.fieldOrder = fieldOrder;
+  payload.fieldOrder = fieldOrder || [];
   fetch("/api/preferences", {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
@@ -642,7 +642,7 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
       const next = new Set(prev);
       next.add(id);
       hiddenColumnsRef.current = next;
-      saveBoardPreferences(columnOrderRef.current, next, minimizedColumnsRef.current, undefined, readOnly);
+      saveBoardPreferences(columnOrderRef.current, next, minimizedColumnsRef.current, fieldOrderRef.current, readOnly);
       return next;
     });
   };
@@ -652,7 +652,7 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
       const next = new Set(prev);
       next.delete(id);
       hiddenColumnsRef.current = next;
-      saveBoardPreferences(columnOrderRef.current, next, minimizedColumnsRef.current, undefined, readOnly);
+      saveBoardPreferences(columnOrderRef.current, next, minimizedColumnsRef.current, fieldOrderRef.current, readOnly);
       return next;
     });
   };
@@ -662,7 +662,7 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
       const next = new Set(prev);
       next.add(id);
       minimizedColumnsRef.current = next;
-      saveBoardPreferences(columnOrderRef.current, hiddenColumnsRef.current, next, undefined, readOnly);
+      saveBoardPreferences(columnOrderRef.current, hiddenColumnsRef.current, next, fieldOrderRef.current, readOnly);
       return next;
     });
   };
@@ -672,7 +672,7 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
       const next = new Set(prev);
       next.delete(id);
       minimizedColumnsRef.current = next;
-      saveBoardPreferences(columnOrderRef.current, hiddenColumnsRef.current, next, undefined, readOnly);
+      saveBoardPreferences(columnOrderRef.current, hiddenColumnsRef.current, next, fieldOrderRef.current, readOnly);
       return next;
     });
   };
@@ -1265,6 +1265,11 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         console.error("Update field failed:", body);
+        if (body.code === "USER_TOKEN_REQUIRED") {
+          toast.error("Link columns require re-authorization. Please disconnect and reconnect this workspace.");
+          onRefresh();
+          return;
+        }
         throw new Error(body.error || "Update field failed");
       }
       toast.success("Saved");
@@ -1550,7 +1555,7 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
       const newOrder = next.map((c) => c.id);
       setColumnOrder(newOrder);
       columnOrderRef.current = newOrder;
-      saveBoardPreferences(newOrder, hiddenColumnsRef.current, minimizedColumnsRef.current, undefined, readOnly);
+      saveBoardPreferences(newOrder, hiddenColumnsRef.current, minimizedColumnsRef.current, fieldOrderRef.current, readOnly);
       return next;
     });
     setDraggingColumnId(null);

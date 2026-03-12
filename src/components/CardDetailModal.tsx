@@ -168,7 +168,7 @@ export default function CardDetailModal({
       />
       {onDelete && !readOnly && (
         <div className="relative" ref={menuDropdownRef}>
-          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-muted-foreground" onClick={() => setMenuOpen(!menuOpen)}>
+          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-muted-foreground" onClick={(e) => { e.stopPropagation(); setMenuOpen(!menuOpen); }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
               <circle cx="12" cy="5" r="2" />
               <circle cx="12" cy="12" r="2" />
@@ -179,7 +179,8 @@ export default function CardDetailModal({
             <div className="absolute right-0 top-full z-50 mt-1 w-40 rounded-md border bg-popover p-1 shadow-md">
               <button
                 className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-destructive hover:bg-destructive/10"
-                onClick={() => {
+                onClick={(e) => {
+                  e.stopPropagation();
                   setMenuOpen(false);
                   onDelete();
                   onClose();

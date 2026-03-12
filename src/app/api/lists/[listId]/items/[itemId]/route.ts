@@ -101,9 +101,23 @@ export async function PATCH(
 
   const statusLabel = body.statusLabel as string | undefined;
 
+  // Link-type columns silently fail with bot tokens — require user token
+  const hasLinkCell = normalizedCells.some((c) => "link" in c);
+  if (hasLinkCell && !workspace.userToken) {
+    return NextResponse.json(
+      { error: "Link columns require a user token. Please re-authorize this workspace.", code: "USER_TOKEN_REQUIRED" },
+      { status: 403 }
+    );
+  }
+
+  // Use user token for link writes (bot tokens silently drop link data)
+  const token = hasLinkCell
+    ? workspace.userToken!
+    : workspace.userToken || workspace.botToken;
+
   try {
     const data = await updateListItem(
-      workspace.userToken || workspace.botToken,
+      token,
       listId,
       itemId,
       normalizedCells
