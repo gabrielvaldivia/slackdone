@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "slackdone": {
+      "command": "npx",
+      "args": ["tsx", "mcp-server.mts"],
+      "cwd": "/Users/gabrielvaldivia/Documents/GitHub/slackdone"
+    },
+    "chrome-devtools": {
+      "command": "npx",
+      "args": ["-y", "chrome-devtools-mcp@latest"]
+    }
+  }
+}

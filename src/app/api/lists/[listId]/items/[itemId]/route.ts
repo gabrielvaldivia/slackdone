@@ -118,6 +118,10 @@ export async function PATCH(
       }
     }
 
+    // If debug flag set, return the sent payload alongside the Slack response
+    if (body.debug) {
+      return NextResponse.json({ ...data, _debug: { sentCells: normalizedCells.map((cell) => ({ ...cell, row_id: itemId })) } });
+    }
     return NextResponse.json(data);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
