@@ -183,7 +183,7 @@ export default function CardDetailModal({
                   setMenuOpen(false);
                   onDelete();
                   onClose();
-                }
+                }}
               >
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="3 6 5 6 21 6" />
