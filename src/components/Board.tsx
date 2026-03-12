@@ -57,7 +57,9 @@ function loadColumnOrder(): string[] {
 }
 
 // Save to both localStorage (fast) and backend (persistent)
-function saveBoardPreferences(columnOrder: string[], hiddenColumns: Set<string>, minimizedColumns: Set<string>, fieldOrder?: string[], localOnly?: boolean, itemOrder?: Record<string, string[]>) {
+const ACTIVE_VIEW_KEY = "slackdone:activeViewId";
+
+function saveBoardPreferences(columnOrder: string[], hiddenColumns: Set<string>, minimizedColumns: Set<string>, fieldOrder?: string[], localOnly?: boolean, itemOrder?: Record<string, string[]>, activeViewId?: string | null) {
   localStorage.setItem(ORDER_KEY, JSON.stringify(columnOrder));
   localStorage.setItem(HIDDEN_KEY, JSON.stringify([...hiddenColumns]));
   localStorage.setItem(MINIMIZED_KEY, JSON.stringify([...minimizedColumns]));
@@ -69,6 +71,7 @@ function saveBoardPreferences(columnOrder: string[], hiddenColumns: Set<string>,
   };
   payload.fieldOrder = fieldOrder || [];
   payload.itemOrder = itemOrder || {};
+  payload.activeViewId = activeViewId ?? null;
   fetch("/api/preferences", {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
@@ -280,7 +283,16 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
   const [filterClients, setFilterClients] = useState<Set<string>>(new Set());
   const [fieldFilters, setFieldFilters] = useState<Record<string, Set<string>>>({});
   const [savedViews, setSavedViews] = useState<SavedView[]>(loadViews);
-  const [activeViewId, setActiveViewId] = useState<string | null>(null);
+  const [activeViewId, setActiveViewId] = useState<string | null>(() => {
+    try { return localStorage.getItem(ACTIVE_VIEW_KEY) || null; } catch { return null; }
+  });
+  const activeViewIdRef = useRef<string | null>(activeViewId);
+  const updateActiveViewId = useCallback((id: string | null) => {
+    updateActiveViewId(id);
+    activeViewIdRef.current = id;
+    if (id) localStorage.setItem(ACTIVE_VIEW_KEY, id);
+    else localStorage.removeItem(ACTIVE_VIEW_KEY);
+  }, []);
   const [savingView, setSavingView] = useState(false);
   const [viewName, setViewName] = useState("");
   const saveInputRef = useRef<HTMLInputElement>(null);
@@ -421,6 +433,9 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
           itemOrderRef.current = prefs.itemOrder;
           setColumns((prev) => applyItemOrder(prev, prefs.itemOrder));
         }
+        if (prefs.activeViewId) {
+          updateActiveViewId(prefs.activeViewId);
+        }
       })
       .catch(() => {});
 
@@ -435,6 +450,30 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
       })
       .catch(() => {});
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Restore saved view filters on mount
+  const viewRestoredRef = useRef(false);
+  useEffect(() => {
+    if (viewRestoredRef.current || !activeViewId || savedViews.length === 0) return;
+    const view = savedViews.find((v) => v.id === activeViewId);
+    if (!view) {
+      updateActiveViewId(null);
+      return;
+    }
+    viewRestoredRef.current = true;
+    setFilterAssignees(new Set(view.assignees));
+    setFilterClients(new Set(view.clients));
+    const restored: Record<string, Set<string>> = {};
+    if (view.filters) {
+      for (const [k, v] of Object.entries(view.filters)) {
+        if (v.length > 0) restored[k] = new Set(v);
+      }
+    }
+    setFieldFilters(restored);
+    if (view.properties) {
+      setVisibleCardProps(view.properties);
+    }
+  }, [savedViews, activeViewId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Collect all available card properties from items
   // "assignees" is a virtual property for people fields
@@ -672,7 +711,7 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
       const next = new Set(prev);
       next.add(id);
       hiddenColumnsRef.current = next;
-      saveBoardPreferences(columnOrderRef.current, next, minimizedColumnsRef.current, fieldOrderRef.current, readOnly, itemOrderRef.current);
+      saveBoardPreferences(columnOrderRef.current, next, minimizedColumnsRef.current, fieldOrderRef.current, readOnly, itemOrderRef.current, activeViewIdRef.current);
       return next;
     });
   };
@@ -682,7 +721,7 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
       const next = new Set(prev);
       next.delete(id);
       hiddenColumnsRef.current = next;
-      saveBoardPreferences(columnOrderRef.current, next, minimizedColumnsRef.current, fieldOrderRef.current, readOnly, itemOrderRef.current);
+      saveBoardPreferences(columnOrderRef.current, next, minimizedColumnsRef.current, fieldOrderRef.current, readOnly, itemOrderRef.current, activeViewIdRef.current);
       return next;
     });
   };
@@ -692,7 +731,7 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
       const next = new Set(prev);
       next.add(id);
       minimizedColumnsRef.current = next;
-      saveBoardPreferences(columnOrderRef.current, hiddenColumnsRef.current, next, fieldOrderRef.current, readOnly, itemOrderRef.current);
+      saveBoardPreferences(columnOrderRef.current, hiddenColumnsRef.current, next, fieldOrderRef.current, readOnly, itemOrderRef.current, activeViewIdRef.current);
       return next;
     });
   };
@@ -702,7 +741,7 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
       const next = new Set(prev);
       next.delete(id);
       minimizedColumnsRef.current = next;
-      saveBoardPreferences(columnOrderRef.current, hiddenColumnsRef.current, next, fieldOrderRef.current, readOnly, itemOrderRef.current);
+      saveBoardPreferences(columnOrderRef.current, hiddenColumnsRef.current, next, fieldOrderRef.current, readOnly, itemOrderRef.current, activeViewIdRef.current);
       return next;
     });
   };
@@ -774,7 +813,7 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
     const next = [...savedViews, view];
     setSavedViews(next);
     saveViews(next);
-    setActiveViewId(view.id);
+    updateActiveViewId(view.id);
     setSavingView(false);
     setViewName("");
   }, [viewName, filterAssignees, filterClients, fieldFilters, activeFieldFilterKeys, effectiveCardProps, savedViews]);
@@ -784,7 +823,7 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
       setFilterAssignees(new Set());
       setFilterClients(new Set());
       setFieldFilters({});
-      setActiveViewId(null);
+      updateActiveViewId(null);
       // Reset properties to defaults
       setVisibleCardProps(null);
       localStorage.removeItem(CARD_PROPS_KEY);
@@ -802,7 +841,7 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
         setVisibleCardProps(view.properties);
         saveCardProperties(view.properties);
       }
-      setActiveViewId(view.id);
+      updateActiveViewId(view.id);
     }
   };
 
@@ -810,7 +849,7 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
     const next = savedViews.filter((v) => v.id !== id);
     setSavedViews(next);
     saveViews(next);
-    if (activeViewId === id) setActiveViewId(null);
+    if (activeViewId === id) updateActiveViewId(null);
     setViewMenuOpen(null);
   };
 
@@ -930,7 +969,7 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
         const newItemOrder = { ...itemOrderRef.current, [sourceColumnId]: col.items.map((i) => i.id) };
         setItemOrder(newItemOrder);
         itemOrderRef.current = newItemOrder;
-        saveBoardPreferences(columnOrderRef.current, hiddenColumnsRef.current, minimizedColumnsRef.current, fieldOrderRef.current, readOnly, newItemOrder);
+        saveBoardPreferences(columnOrderRef.current, hiddenColumnsRef.current, minimizedColumnsRef.current, fieldOrderRef.current, readOnly, newItemOrder, activeViewIdRef.current);
 
         return next;
       });
@@ -1592,7 +1631,7 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
       const newOrder = next.map((c) => c.id);
       setColumnOrder(newOrder);
       columnOrderRef.current = newOrder;
-      saveBoardPreferences(newOrder, hiddenColumnsRef.current, minimizedColumnsRef.current, fieldOrderRef.current, readOnly, itemOrderRef.current);
+      saveBoardPreferences(newOrder, hiddenColumnsRef.current, minimizedColumnsRef.current, fieldOrderRef.current, readOnly, itemOrderRef.current, activeViewIdRef.current);
       return next;
     });
     setDraggingColumnId(null);
@@ -1971,7 +2010,7 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
                 label="Assignee"
                 options={assigneeOptions}
                 selected={filterAssignees}
-                onChange={(v) => { setFilterAssignees(v); setActiveViewId(null); }}
+                onChange={(v) => { setFilterAssignees(v); updateActiveViewId(null); }}
               />
             )}
             {clientOptions.length > 0 && availableCardProps.some((p) => p.label.toLowerCase() === "client" && p.keys.some((k) => effectiveCardProps.has(k))) && (
@@ -1979,7 +2018,7 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
                 label="Client"
                 options={clientOptions}
                 selected={filterClients}
-                onChange={(v) => { setFilterClients(v); setActiveViewId(null); }}
+                onChange={(v) => { setFilterClients(v); updateActiveViewId(null); }}
               />
             )}
             {selectFilterProps.map((prop) => (
@@ -1990,7 +2029,7 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
                 selected={fieldFilters[prop.key] || new Set()}
                 onChange={(v) => {
                   setFieldFilters((prev) => ({ ...prev, [prop.key]: v }));
-                  setActiveViewId(null);
+                  updateActiveViewId(null);
                 }}
               />
             ))}
@@ -2096,7 +2135,7 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
           onFieldOrderChange={readOnly ? undefined : (order) => {
             setFieldOrder(order);
             fieldOrderRef.current = order;
-            saveBoardPreferences(columnOrderRef.current, hiddenColumnsRef.current, minimizedColumnsRef.current, order, undefined, itemOrderRef.current);
+            saveBoardPreferences(columnOrderRef.current, hiddenColumnsRef.current, minimizedColumnsRef.current, order, undefined, itemOrderRef.current, activeViewIdRef.current);
           }}
           readOnly={readOnly}
         />
