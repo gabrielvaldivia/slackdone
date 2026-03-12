@@ -5,6 +5,9 @@ async function slackFetch(
   token: string,
   body?: Record<string, unknown>
 ) {
+  if (method === "slackLists.items.update") {
+    console.log("[DEBUG] slackLists.items.update payload:", JSON.stringify(body, null, 2));
+  }
   const res = await fetch(`${SLACK_API}/${method}`, {
     method: "POST",
     headers: {
@@ -14,6 +17,9 @@ async function slackFetch(
     body: body ? JSON.stringify(body) : undefined,
   });
   const data = await res.json();
+  if (method === "slackLists.items.update") {
+    console.log("[DEBUG] slackLists.items.update response:", JSON.stringify(data, null, 2));
+  }
   if (!data.ok) {
     const extra = { errors: data.errors, metadata: data.response_metadata };
     throw new Error(`Slack API ${method}: ${data.error} ${JSON.stringify(extra)}`);
