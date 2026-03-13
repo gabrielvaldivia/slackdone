@@ -288,7 +288,7 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
   });
   const activeViewIdRef = useRef<string | null>(activeViewId);
   const updateActiveViewId = useCallback((id: string | null) => {
-    updateActiveViewId(id);
+    setActiveViewId(id);
     activeViewIdRef.current = id;
     if (id) localStorage.setItem(ACTIVE_VIEW_KEY, id);
     else localStorage.removeItem(ACTIVE_VIEW_KEY);
