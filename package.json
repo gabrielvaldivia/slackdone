@@ -25,7 +25,7 @@
     "clsx": "^2.1.1",
     "dialkit": "^1.0.0",
     "dotenv": "^17.3.1",
-    "firebase": "^12.9.0",
+    "firebase-admin": "^13.7.0",
     "lucide-react": "^0.577.0",
     "marked": "^17.0.4",
     "motion": "^12.35.0",
