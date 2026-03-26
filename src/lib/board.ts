@@ -316,6 +316,8 @@ async function fetchSingleBoard(
         schemaByKey.get(field.key) || schemaById.get(field.column_id);
       const fieldType = sf?.type || "unknown";
       const fieldLabel = sf?.label || field.key || "Unknown";
+
+
       const columnId = field.column_id || sf?.id || field.key;
 
       let displayValue = "";
@@ -461,7 +463,10 @@ function slackRichTextToMarkdown(blocks: any[]): string {
     const type = block.type as string;
     const elements = Array.isArray(block.elements) ? block.elements : [];
 
-    if (type === "rich_text_list") {
+    if (type === "rich_text") {
+      // Top-level wrapper block — recurse into its children
+      parts.push(slackRichTextToMarkdown(elements));
+    } else if (type === "rich_text_list") {
       const style = block.style as string; // "bullet" or "ordered"
       for (let i = 0; i < elements.length; i++) {
         const itemText = renderRichTextSection(elements[i]);
