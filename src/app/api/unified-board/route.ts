@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSessionFromRequest } from "@/lib/session";
+import { getSessionFromRequestWithApiKey as getSessionFromRequest } from "@/lib/session-server";
 import { fetchUnifiedBoard } from "@/lib/board";
 
 export async function GET(request: NextRequest) {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSessionFromRequest } from "@/lib/session";
+import { getSessionFromRequestWithApiKey as getSessionFromRequest } from "@/lib/session-server";
 import { oauthAccess, getTeamInfo } from "@/lib/slack";
 import { addWorkspace } from "@/lib/store";
 

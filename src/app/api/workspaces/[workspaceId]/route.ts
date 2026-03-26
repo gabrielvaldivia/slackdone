@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSessionFromRequest } from "@/lib/session";
+import { getSessionFromRequestWithApiKey as getSessionFromRequest } from "@/lib/session-server";
 import { removeWorkspace } from "@/lib/store";
 
 export async function DELETE(
