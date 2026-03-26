@@ -376,9 +376,9 @@ async function fetchSingleBoard(
           rawValue = field.value;
           displayValue = typeof rawValue === "string" ? rawValue : "";
         }
-      } else if (field.text) {
-        rawValue = field.text;
-        displayValue = field.text;
+      } else if (field.text || field.value) {
+        rawValue = field.value ?? field.text;
+        displayValue = extractTextFromField(field as Record<string, unknown>) || (field.text as string) || "";
       } else if (field.number !== undefined) {
         const numVal = field.number;
         rawValue = Array.isArray(numVal) ? numVal[0] : numVal;
@@ -437,30 +437,79 @@ async function fetchSingleBoard(
 }
 
 function extractTextFromField(field: Record<string, unknown>): string {
-  if (typeof field.text === "string") return field.text;
+  // Try to parse Slack rich text JSON structure first for proper formatting
   if (typeof field.value === "string") {
     try {
       const parsed = JSON.parse(field.value);
       if (Array.isArray(parsed)) {
-        return parsed
-          .flatMap((block: Record<string, unknown>) =>
-            Array.isArray(block.elements)
-              ? (block.elements as Record<string, unknown>[]).flatMap(
-                  (section: Record<string, unknown>) =>
-                    Array.isArray(section.elements)
-                      ? (section.elements as Record<string, unknown>[]).map(
-                          (el: Record<string, unknown>) =>
-                            (el.text as string) || ""
-                        )
-                      : []
-                )
-              : []
-          )
-          .join("");
+        return slackRichTextToMarkdown(parsed);
       }
     } catch {
-      return field.value;
+      // Not JSON, fall through
     }
   }
+  if (typeof field.text === "string") return field.text;
+  if (typeof field.value === "string") return field.value;
   return "";
 }
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+function slackRichTextToMarkdown(blocks: any[]): string {
+  const parts: string[] = [];
+
+  for (const block of blocks) {
+    const type = block.type as string;
+    const elements = Array.isArray(block.elements) ? block.elements : [];
+
+    if (type === "rich_text_list") {
+      const style = block.style as string; // "bullet" or "ordered"
+      for (let i = 0; i < elements.length; i++) {
+        const itemText = renderRichTextSection(elements[i]);
+        const prefix = style === "ordered" ? `${i + 1}. ` : "- ";
+        parts.push(prefix + itemText);
+      }
+    } else if (type === "rich_text_section" || type === "rich_text_preformatted" || type === "rich_text_quote") {
+      const text = renderRichTextSection(block);
+      if (type === "rich_text_preformatted") {
+        parts.push("```\n" + text + "\n```");
+      } else if (type === "rich_text_quote") {
+        parts.push("> " + text);
+      } else {
+        parts.push(text);
+      }
+    } else {
+      // Unknown block type — try to extract text
+      const text = renderRichTextSection(block);
+      if (text) parts.push(text);
+    }
+  }
+
+  return parts.join("\n");
+}
+
+function renderRichTextSection(section: any): string {
+  if (!Array.isArray(section.elements)) return "";
+  return section.elements
+    .map((el: any) => {
+      if (el.type === "text") {
+        let text = (el.text as string) || "";
+        const style = el.style as Record<string, boolean> | undefined;
+        if (style?.bold) text = `**${text}**`;
+        if (style?.italic) text = `*${text}*`;
+        if (style?.strike) text = `~~${text}~~`;
+        if (style?.code) text = "`" + text + "`";
+        return text;
+      }
+      if (el.type === "link") {
+        const url = (el.url as string) || "";
+        const text = (el.text as string) || url;
+        return text === url ? url : `[${text}](${url})`;
+      }
+      if (el.type === "emoji") {
+        return (el.unicode as string) ? String.fromCodePoint(parseInt(el.unicode, 16)) : `:${el.name}:`;
+      }
+      return (el.text as string) || "";
+    })
+    .join("");
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
