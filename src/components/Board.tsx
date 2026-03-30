@@ -1163,8 +1163,24 @@ export default function Board({ data, onRefresh, readOnly, initialView, shareTok
       // rawItem.columnValues is the raw Slack fields array at runtime
       const rawFields = targetItem.rawItem?.columnValues as unknown as Array<Record<string, unknown>> | undefined;
       const rawNameField = rawFields?.find((f) => f.key === "name");
-      const nameColumnId =
-        nameField?.columnId || (rawNameField?.column_id as string) || "name";
+      let nameColumnId =
+        nameField?.columnId || (rawNameField?.column_id as string) || "";
+
+      // If this item doesn't have a name column (e.g. created via API), find it from a sibling item
+      if (!nameColumnId) {
+        for (const col of columns) {
+          for (const sibling of col.items) {
+            if (sibling.sourceListId !== targetItem.sourceListId) continue;
+            const siblingRaw = sibling.rawItem?.columnValues as unknown as Array<Record<string, unknown>> | undefined;
+            const siblingName = siblingRaw?.find((f) => f.key === "name");
+            if (siblingName?.column_id) {
+              nameColumnId = siblingName.column_id as string;
+              break;
+            }
+          }
+          if (nameColumnId) break;
+        }
+      }
 
       const cells = [
         {
